@@ -95,7 +95,8 @@ only for the gap between the merges. See §7 R9 and D9.
   - the results-viewer and analysis snapshot badge (D3).
 
   It reads the same whether the run was local or SLURM. It is shown only while the run's
-  aggregate publication still covers the run as it now stands (C1).
+  aggregate publication still covers the run as it now stands (C1), or, when every image
+  failed, while none exists (D16).
 - **G2b (D2, D10).** Such a run can be curated, and relaunched from the GUI for Run,
   `--retry-failures`, Validate and Measure, whoever launched it. Its failed images have no
   rows, and curating it leaves every enforced run-proof descriptor valid.
@@ -106,7 +107,8 @@ only for the gap between the merges. See §7 R9 and D9.
 - **G5.** Every tabular text file PhenoTypic writes for the mirror or the GUI is TSV:
   - `measurements.csv` is no longer written (D1);
   - every reader prefers `.tsv` and falls back to `.csv` in an older tree;
-  - an older tree's generated `measurements.csv` is retired after the TSV is published.
+  - an older tree's generated `measurements.csv` is retired after the TSV is published;
+  - `error_analysis.csv` stays CSV for now (D18; §8).
 - **G5b (D8).** Every metadata picker and table reader in the GUI accepts `.tsv` wherever the
   CLI does.
 - **G6.** Every *mounted* GUI surface that lists, filters, loads or writes a typed config
@@ -441,7 +443,12 @@ Today the inactive→cancel branch is reached from every caller, including the c
   the union:
   - the type check in `_complete_slurm_submission` (`run_console/_callbacks.py:1042-1047`);
   - the submitter seam's annotation (`run_console/_app.py:74`, `_callbacks.py:1310`);
-  - the fake the browser tests inject through `shell/_app.py:245-246`.
+  - the fake the browser tests inject through `shell/_app.py:245-246`;
+  - the shell's two further seam annotations (`shell/_app.py:215, 681`; plan review I5);
+  - the presentation event: `_SlurmCompletion` (`run_console/_callbacks.py:849-855`) gains
+    `finished: SlurmFinishedWithoutSubmission | None`, and the banner that reads
+    `completion.result` (`:2672`) shows "nothing needed SLURM; the run finished in this
+    process" for it.
 - **Status.** A new registry method, `observe_finished_without_submission(run_id, generation,
   returncode)`, decides it. It does **not** reuse `observe_local_exit`, which maps
   `mode == "slurm"` to `failed`, "unsupported run mode" (`_runs_registry.py:665-675`).
@@ -545,9 +552,11 @@ rebase onto `origin/main` the 13 are re-run there, because the expected-red list
 `complete_with_failures` and a count `failed_images = N`. The verdict requires that:
 - every accepted image is resolved;
 - at least one failed terminally;
-- the run's aggregate publication still covers the run as it now stands.
+- the run's aggregate publication still covers the run as it now stands, or, for an
+  all-failed run, none exists (D16, PA4 step 4).
 
-N is the run state's `diagnostics.failed`. It agrees with the CLI's exit code on
+N is the number of `failed` verdicts in `state.images` (the count `diagnostics.failed`
+reports, which nothing branches on). It agrees with the CLI's exit code on
 zero/non-zero, but it can differ in value: the CLI uses this invocation's count when positive
 (`_run_failure_count`, `phenotypicCLI.py:1493-1518`). The GUI shows the **run's** count
 (review Minor 4).
@@ -574,27 +583,66 @@ judges the state it already resolved, at its own depth:
 
 1. **Completion.** `completion == "failed"`: no live authority, and at least one image
    failed (`:1922-1934`).
-2. **Resolution.** Every accepted image's verdict is `verified` or `failed`, so
-   `accepted - verified - failed == 0`.
-3. **A current aggregate proof.** `_valid_aggregate_proof(output_dir)`, the GUI-tolerant
-   check behind `aggregate_proof_is_current` (`:1397-1433`), is not `None`. **Never
-   `valid_aggregate_snapshot`**, whose strict hashing a curation write defeats (§3.2).
-4. **Clause 2 of rule 1, against the aggregate proof**, the same comparisons
+2. **Resolution, over `state.images`.** Every accepted image's verdict is `verified` or
+   `failed`; none is unresolved. It is stated over the per-image verdicts, never over
+   `diagnostics`, which nothing may branch on (`sdk_/_state_types.py:138-150`; plan review I1).
+   N is the number of `failed` verdicts.
+3. **The proof arm** (at least one image verified). `_valid_aggregate_proof(output_dir)`, the
+   GUI-tolerant check behind `aggregate_proof_is_current` (`:1397-1433`), is not `None`.
+   **Never `valid_aggregate_snapshot`**, whose strict hashing a curation write defeats (§3.2).
+   Then clause 2 of rule 1, against that proof, the same comparisons
    `_run_proof_covers_current_inventory` makes against the run proof:
-   - `proof["inventory_digest"] == identity.inventory_digest`;
-   - `proof["scientific_config_digest"] == identity.scientific_config_digest`;
-   - `proof["finalization_input_digest"] in accepted_finalization_digests(config)` (`:1436`);
+   - `proof["inventory_digest"] == state.identity.inventory_digest`;
+   - `proof["scientific_config_digest"] == state.identity.scientific_config_digest`;
+   - `proof["finalization_input_digest"] in state.finalization_digests` (see "Where the
+     config comes from" below);
    - `proof["source_set_digest"] == canonical_digest(sorted(verified work ids))`, and
      `proof["source_image_count"] == len(verified)`. The aggregate proof carries both
      directly (`_cli_completion.py:1258-1259`).
+4. **The no-proof arm (D16)** (no image verified). An all-failed run can have no aggregate
+   proof: `publish_aggregate_snapshot` refuses zero successes (`_cli_completion.py:1179-1181`).
+   In place of the proof's digests the arm requires:
+   - **every** accepted image's verdict is `failed`. `resolve_run_state` matches failure
+     records against the **current** inventory's work ids, which bind the processing
+     configuration and the input (`_cli/_cli_failure_tracker.py:276, 507`), so a changed
+     configuration or input set leaves an image unresolved rather than failed, and step 2
+     already refuses that;
+   - `completion == "failed"` (step 1), so no liveness authority claims the run; a run killed
+     mid-image leaves that image unresolved;
+   - **no aggregate publication marker exists at all.** A marker beside zero verified images
+     means verified images were lost after a publication (a restart that cleared success
+     records), which is not a finished run.
+
+   No finalization input is compared: nothing was published, so nothing can be stale. N is
+   the number of accepted images.
 5. **Not a process run.** A run whose config records `process_only_layer` returns `None` (N4).
    No caller needs a process arm: the waiter keeps its own rule 4 (`_cli_wait.py:356-364`),
    the GUI has no process mode, and the viewer does not open process trees. A process tree
    with failures therefore stays unclaimable (PA11), which is right, because the CLI would
    refuse a full-mode continuation of it as incompatible.
 
-The comparisons in (4) are shared with `_run_proof_covers_current_inventory` through one
-private helper, so the two arms cannot drift. **[call]**
+**Where the config comes from (plan review I1).** `RunState` carries no config
+(`sdk_/_state_types.py:157-166`), yet step 3's finalization comparison and step 5 need it: the
+aggregate proof writes the unversioned finalization digest (`_cli_completion.py:1249-1256`),
+while `identity.finalization_input_digest` is the versioned one (`_run_state.py:183-196,
+325-327`). `RunState` therefore gains two fields, filled from `resolve_run_state`'s own single
+config read (`_read_state_config`, `:134`):
+- `finalization_digests: frozenset[str] = frozenset()`, the value of
+  `accepted_finalization_digests(config)` (`:1436`);
+- `process_only_layer: str | None = None`.
+
+The defaults keep every existing `RunState(...)` construction valid. **[call]** This is
+chosen over re-reading `processing_state.json` inside the verdict and comparing identity
+digests: with one read the verdict can never describe a different instant from the caller's
+state, which is the point of N1. The verdict's one read is the aggregate proof itself, whose
+fields are self-consistent.
+
+**The shared helpers.** Rule 1 compares the inventory and scientific digests before its process
+branch (`:1508-1520`), and takes its source set from `_source_set_binding(output_dir, proof)`
+(`:1528`), which for a pre-P4 run proof is the aggregate's, not `proof`. So the comparisons are
+two private helpers, `_identity_digests_match(proof, identity)` (inventory, scientific) and
+`_source_set_matches(binding, verified)` (source set and count, given a binding mapping). Both
+arms call both, so they cannot drift. **[call]**
 
 **Who calls it, and with which state (N1):**
 - **GUI, generation-less** (these import from `phenotypic.sdk_` only, per the readers rule):
@@ -624,12 +672,22 @@ private helper, so the two arms cannot drift. **[call]**
     finalize almost never falls inside the waiter's window, because the live-run guard
     refuses a second invocation while the run is live.
   - **The exit-5 line gains a variant.** `_unpublished_line` (`_cli_wait.py:404-424`) prints
-    "this submission published nothing, so its finalizer failed or never ran". When the
-    generation did publish but the verdict is `None`, it prints instead: "phenotypic-wait:
-    this submission published, but its published outputs no longer cover the run (for
-    example, a store the finalizer could not project was left out; the finalizer log under
-    <logs> names it). Re-running the same command does not change that until the cause is
-    fixed." **[call]**
+    "this submission published nothing, so its finalizer failed or never ran". The variant is
+    printed **only when this generation published an aggregate proof** (its marker's
+    `execution_epoch` is the generation; with no generation, a marker exists) and the verdict
+    is `None`. It is never printed on `generation is None` alone, and never for an all-failed
+    run, which D16 keeps at `3` (plan review C1).
+    - **When the proof lists excluded stores (D15).** `publish_aggregate_snapshot`
+      (`_cli_completion.py:1120`) records `excluded_work_ids`: the currently verified images
+      its `source_work_ids` leave out, sorted. It is an additive marker field with no version
+      bump, and `.phenotypic/` is exempt from byte stability (#281 C11). The line names each
+      image as `<dataset>/<image>` from `state.images`: "phenotypic-wait: the published outputs
+      leave out <list>, because the finalizer could not project their stores (its log under
+      <logs> says why). Fix or remove those stores, then re-run the same command." **[call]**
+    - **Otherwise:** "phenotypic-wait: this submission published, but its published outputs no
+      longer cover the run (the metadata, pipeline or input set changed after it published).
+      Re-run the same command."
+    - `--accept-failures` still maps only a final `3` to `0` (D15).
 
   It changes what #281's exit `3` promises in one edge case; D14 adopts it.
 - **The SLURM observer, generation-bound.** A thin wrapper,
@@ -663,6 +721,10 @@ private helper, so the two arms cannot drift. **[call]**
   The existing guard `test_every_status_vocabulary_in_the_gui_agrees_with_the_registry`
   (`tests/unit/gui/shell/test_runs_registry.py:1268`) already catches a vocabulary that is
   missed, so no new grep gate is needed (review Minor 2).
+- **The plumbing for N** (plan review I2, I3):
+  - `_Observation` (`run_console/_slurm_observer.py:327-335`) gains `failed_images: int | None = None`, and `_apply` (`:861-896`) passes it;
+  - `RunRegistry.compare_and_set` (`shell/_runs_registry.py:502-518`) gains a `failed_images` keyword, and resets it to `None` for any status other than `complete_with_failures`, so a later `complete` cannot carry a stale N;
+  - `_rehydrated_status` (`:1026-1104`) returns N beside `(status, detail)`, and both its consumers persist it: `rehydrate_from_sandbox` (`:829`) and `_release_dead_owner_locked` (`:1357-1397`).
 - **The persisted record.** `failed_images` is serialised next to `returncode`
   (`_runs_registry.py:1244-1245, 1501`) and read tolerantly, so an older record has `None`.
 - **Older readers** (review Minor 3). An older GUI's `_read_owner_record` returns `None` for
@@ -722,7 +784,7 @@ reserves vermilion for error and alert.
 |---|---|---|
 | Curated mirror, `_write_curated_mirror` (`results_viewer/_curation_labels.py:839-850`) | `.parquet`, then a best-effort `.csv` (`_atomic_write_csv`, `:961-966`) | `.parquet`, then `measurements.tsv` via `sdk_.write_tsv` (`sdk_/_delimited.py:102-148`), then retire a stale `measurements.csv` (PA8). `_atomic_write_csv` is deleted |
 | `FilteredMeasurements._save_locked` (`results_viewer/_filtered_state.py:543-600`, CSV at `:575-600`) | `.parquet`, then `.csv` | the CSV write is replaced by a TSV write in place, and the `measurements_csv_path` import (`:44`) goes. Nothing else changes |
-| Error analysis, `_stage_generation` (`results_viewer/_error_tab/_publication.py:576-600`); the CLI re-emit shares it (`_cli/_cli_error_outputs.py:67-95`) | `error_analysis.csv` (`computation_path_name`, `:849-851`) | `error_analysis.tsv` |
+| Error analysis, `_stage_generation` (`results_viewer/_error_tab/_publication.py:576-600`); the CLI re-emit shares it (`_cli/_cli_error_outputs.py:67-95`) | `error_analysis.csv` (`computation_path_name`, `:849-851`) | **unchanged** (D18): `error_analysis.csv` stays, deferred to §8 |
 
 **[call] On `FilteredMeasurements` (review Minor 8).** `_gui/CLAUDE.md:629-637` calls it a
 "utility / constants module only … do not extend it", and only tests construct it
@@ -754,16 +816,12 @@ so curation does not unfence the run (PA10).
   A CLI retirement of the CSV during a discovery then forces a retry rather than a torn
   binding.
 
-**Error analysis publication** has a strict versioned contract. Exact artifact name sets are
-checked at `_publication.py:490-495, 638-644, 662-676, 710-714`, under
-`schema_version == 1` (journal `:471`, receipt `:717`).
-- **New publications.** They write `error_analysis.tsv` under `schema_version: 2`.
-- **Readers and rollback.** Both accept version 1 (`.csv`) for a publication already on disk.
-- **The stale CSV.** Publishing a version-2 generation retires a live `error_analysis.csv`:
-  publish first, then unlink, the B6 pattern (`sdk_.remove_stale_csv_sibling`). That needs
-  `"error_analysis"` out of `_KEPT_CSV_STEMS` (`_delimited.py:146-148`; see PA8).
-- **New sdk_ names.** Add `ERROR_ANALYSIS_TSV` and `BundleLayout.error_analysis_tsv` beside
-  the CSV names, which stay defined as legacy read names (`sdk_/_io_constants.py:1090, 3469-3471`).
+**Error analysis stays CSV (D18).** Its publication has a strict versioned contract (name sets
+at `_publication.py:490-495, 638-644, 662-676, 710-714`, `schema_version == 1` at `:369, 471,
+717`), and a version bump also has to move `_generation_digest`'s pinned version (`:799-827`),
+or an unchanged v1 tree returns `already_published` early (`:331-338`; plan review I6). The
+Error tab is unmounted, so the change is deferred to the follow-up issue (§8).
+`"error_analysis"` stays in `_KEPT_CSV_STEMS` (PA8).
 
 **Readers:**
 - **`_schema_cache.py:46`**, the only GUI reader of the text mirror. It is the no-pyarrow
@@ -789,11 +847,6 @@ checked at `_publication.py:490-495, 638-644, 662-676, 710-714`, under
 - curation on a pre-PA8 tree retires its `measurements.csv`;
 - a failed TSV write leaves neither a `.tsv` nor a `.csv`, and keeps the `.parquet`;
 - `_schema_cache` prefers the TSV and falls back to a CSV-only tree;
-- error analysis:
-  - writes a version-2 TSV publication;
-  - reads a version-1 one;
-  - retires the old CSV;
-  - a rollback over a version-1 journal still validates;
 - red #7's test (§3.3).
 
 ### PA6. The typed config suffixes
@@ -821,7 +874,8 @@ The other tune surfaces move to §8, to be fixed when `/tune/` is re-mounted.
 
 | Surface | Today (file:line) | PR A |
 |---|---|---|
-| Builder directory browser | `PIPELINE_EXTS = PIPELINE_CONFIG_SUFFIXES` (`builder/_directory_browser.py:32`), matched at `:259` | `directory_tree` (`:151-158`) accepts a predicate as well as `extensions`; the pipeline modal passes `is_pipeline_config_path` |
+| Builder directory browser | `PIPELINE_EXTS = PIPELINE_CONFIG_SUFFIXES` (`builder/_directory_browser.py:32`), matched at `:259` | `directory_tree` (`:151-158`) accepts a predicate as well as `extensions`; the pipeline modal passes `is_pipeline_config_path`, threaded through the wrappers `_render_tree_body` (`builder/_callbacks.py:4019`) and `_initial_tree_body` (`builder/_modal_browser.py:189`) |
+| Run console pipeline picker (plan review I4) | `render_pipeline_tree` (`run_console/_form.py:58-73`) calls `directory_tree(..., extensions=PIPELINE_EXTS)` (`:67-73`), so a `.pht-tune.json` is selectable as the Run pipeline | passes `predicate=is_pipeline_config_path` |
 | Shell classifier | `_classify_file` (`shell/_classifier.py:220-235`). The content peek (`:348-360`) matches `"pipe_cfgs"`, which a tune spec also contains, because it embeds its pipeline | suffix test is `is_pipeline_config_path`, so no `has_pipeline_json` for a tune spec |
 | Run console pipeline check | `run_console/_callbacks.py:2897-2899` | `is_pipeline_config_path` |
 | Tune Deploy validator (red #1, #4–6) | `CONFIG_SUFFIX_TUNING` only (`tune/_validation.py:61`); message names `.json.pht-tune` (`:65`) | accept the canonical and legacy typed tune suffixes; message names `.pht-tune.json` |
@@ -846,7 +900,6 @@ The other tune surfaces move to §8, to be fixed when `/tune/` is re-mounted.
     - the "complete with failures" status;
     - the SLURM no-op exit 0/3;
     - the curated TSV mirror;
-    - the error-analysis TSV;
     - the `is_pipeline_config_path` listing;
     - curation of a run with failures (PA10);
     - relaunch of a run with failures (PA11);
@@ -868,7 +921,9 @@ The other tune surfaces move to §8, to be fixed when `/tune/` is re-mounted.
     - one paragraph on `complete · N failed`: how it differs from `failed`, that the failed
       images have no rows, and that the output can be relaunched with `--retry-failures`
       (PA11). If that relaunch is killed before it finalizes, the GUI refuses the output, and
-      it is resumed by re-running the same command from the CLI (N7);
+      it is resumed by re-running the same command from the CLI (N7). Never re-run the same
+      output from the CLI and the GUI at once: nothing records a local CLI run's liveness, so
+      the GUI cannot see it (D17);
   - **`06_view_results.md`:**
     - one paragraph on the badge and on curating such a run (PA10);
     - **curate after the last re-run (D11).** A CLI re-run or `dvc repro` of a run with
@@ -898,7 +953,7 @@ shared finalize path). The CSV is kept only because GUI curation rewrote it (#28
 | `_cli_output_manager.py:968-1003` `_seed_measurements` | writes `.tsv`, `.csv`, `.parquet`, each through `_guarded_terminal_best_effort` (`:99-115`), which swallows errors | writes `.tsv` and `.parquet`. The old CSV is retired by `remove_stale_csv_sibling(measurements_tsv_path(output_dir))` only if both hold: (1) the TSV write **succeeded**, a fact the plan must carry out of the best-effort wrapper; (2) the unlink runs **under `commit_guard`**. Unlike the unguarded sweeps at `:838` and `:1502` (review Minor 10). The docstring (`:975-983`) stops citing B9 |
 | `_cli_completion.py:1205-1210` `required_paths` | records `measurements_csv` | drops `measurements_csv`. The proof records `master_parquet`, `measurements_tsv` and `measurements_parquet`, plus `metrics_json` and `schema_json` (`:1215-1220`). The comment at `:1183-1203` is updated |
 | `_cli_interactive.py:257, 274-279` dry-run inventory | names `measurements.csv` "for the results viewer" | names only the TSV and Parquet |
-| `_cli_readme_generator.py:116, 147-150` README tree and paragraph | lists `measurements.csv` "kept until #283", and names `error_analysis.csv` (`:147`) | removed; `error_analysis.tsv`; one sentence says older runs had a `measurements.csv` |
+| `_cli_readme_generator.py:116, 147-150` README tree and paragraph | lists `measurements.csv` "kept until #283", and names `error_analysis.csv` (`:147`) | removed; `error_analysis.csv` stays (D18); one sentence says older runs had a `measurements.csv` |
 | `_dashboard/_generator.py:826, 1017-1019` download command | `wget …/deliverables/measurements.csv` | `…/deliverables/measurements.tsv`; the element id `cmd-csv` is renamed with its CSS/JS |
 | `_cli_preflight.py:182-185` hint text | "dropped from measurements.csv" | "dropped from measurements.tsv" |
 
@@ -906,7 +961,7 @@ shared finalize path). The CSV is kept only because GUI curation rewrote it (#28
 
 | Site | Today | PR A |
 |---|---|---|
-| `_delimited.py:146-148` `_KEPT_CSV_STEMS` | `{"measurements", "error_analysis", "metadata"}` | `{"metadata"}`. The user's snapshot is never swept (the root `CLAUDE.md` rule); the docstring at `:155-162` follows |
+| `_delimited.py:146-148` `_KEPT_CSV_STEMS` | `{"measurements", "error_analysis", "metadata"}` | `{"error_analysis", "metadata"}`: only `measurements` leaves it. `error_analysis.csv` stays CSV (D18), and the user's snapshot is never swept (the root `CLAUDE.md` rule); the docstring at `:155-162` follows |
 | `_run_state.py:1331-1333` `_GUI_WRITTEN_PROOF_DESCRIPTORS` | `{measurements_csv, measurements_tsv, measurements_parquet}` | **unchanged**. It is reader-side: a proof written before PA8 still records `measurements_csv`, and a curation or a PA8 retirement must not unfence it |
 | `_io_constants.py:415, 1698-1700, 3371-3377` `MEASUREMENTS_CSV`, `measurements_csv_path`, `BundleLayout.mirror_csv` | the curation write target | **kept as legacy read names**, with "read-only legacy; no writer" docstrings |
 | `_io_constants.py:1708-1730, 3379-3388` `measurements_table_path` | "unwired until #283" | wired (PA5); docstrings drop the caveat |
@@ -986,8 +1041,8 @@ Each assertion is reviewed one by one:
 - a finalize over a tree holding one retires it only after the TSV exists, and only inside
   the commit guard;
 - a TSV publish failure keeps the CSV;
-- `remove_stale_csv_sibling` now sweeps `measurements` and `error_analysis`, and still
-  refuses `metadata`;
+- `remove_stale_csv_sibling` now sweeps `measurements`, and still refuses `error_analysis`
+  and `metadata`;
 - a proof written before PA8, holding `measurements_csv`, still validates after the CSV is
   retired.
 
@@ -1070,7 +1125,7 @@ It replaces every `completion == "complete"` write-authority check:
 **Fencing after a curation write on such a run.** Curation rewrites `measurements.parquet`
 and `measurements.tsv`, retires a stale `measurements.csv` (PA5), and writes the
 `deliverables/qc/` and `errors/` state. Every descriptor it touches is in
-`_GUI_WRITTEN_PROOF_DESCRIPTORS`, and none of the comparisons in PA4 step 4 reads a mirror, so:
+`_GUI_WRITTEN_PROOF_DESCRIPTORS`, and none of the comparisons in PA4 step 3 reads a mirror, so:
 - `aggregate_proof_is_current` stays `True`;
 - `run_finished_with_failures` still returns the same N;
 - `resolve_run_state` keeps completion `failed`, with the same identity digest and
@@ -1140,7 +1195,7 @@ docstring's "Fires when" list (`:1418-1423`) says so.
 | An owner record that does not parse, or names an unknown status | `:1283-1287` (via `_read_owner_record`, `:1209-1210`) | No owner can be established, so nothing proves the output is free. This includes a newer GUI's `complete_with_failures` read by an older GUI (PA4) |
 | A non-terminal GUI owner with no proof of death, which includes **every SLURM launch** | `:1288-1294`, `_dead_owner_reason` (`:1302+`) | A launch that may still be running; the scheduler, not a pid, owns its liveness |
 | `completion == "active"` | `:1462-1466` | A liveness authority (a SLURM fence, a live pid) claims the output; a second launch would be a second writer |
-| `completion == "failed"` that the verdict does **not** confirm | `:1469-1474` | An unfinished run: an unresolved image, no aggregate proof, or a publication that no longer covers the run (C1). Its state is mid-way, and a new launch would mix with it |
+| `completion == "failed"` that the verdict does **not** confirm | `:1469-1474` | An unfinished run: an unresolved image, no aggregate proof although an image verified, an aggregate marker beside zero verified images, or a publication that no longer covers the run (C1, D16). Its state is mid-way, and a new launch would mix with it |
 | `completion == "incomplete"` | `:1475-1479` | Accepted work that never verified, or was never published over |
 
 **A killed relaunch can only be resumed from the CLI (N7).** Suppose a GUI-launched
@@ -1149,6 +1204,14 @@ finalizes. The output is then an unconfirmed `failed` run, and this gate refuses
 "still refuses … unfinished" requires. The GUI's own relaunch is what strands the user on the
 CLI, so the refusal message and the tutorial (PA7) both say to re-run the same command from
 the CLI.
+
+**A local CLI run is invisible to the gate (D17).** The liveness authorities are the SLURM
+fence and a GUI owner with a live pid (`sdk_/_run_state.py:1078-1140`); a local CLI process
+holds neither, and the CLI takes no output-wide lock (its one `exclusive_path_lock` guards the
+metadata snapshot, `phenotypicCLI.py:1255-1268`). So the GUI can claim a confirmed output that
+a local CLI process is re-running at that moment. This is accepted and documented: the
+tutorial (PA7) and the run docs (PA8) say not to run the same output from the CLI and the GUI
+at once.
 
 The refusal message for an unconfirmed `failed` run no longer calls a GUI-launched run
 "non-GUI". It says "output has an unfinished run with N failed image(s) of M accepted; re-run
@@ -1544,8 +1607,7 @@ FEATURES row:
     - `tests/unit/cli/`, `tests/integration/cli/`, `tests/unit/sdk_/`, `tests/gui/results_viewer/`
       and `tests/unit/gui/results_viewer/`;
     - **every importer of `tests/_output_layout.py`** (62 files; 28 of them call
-      `write_measurements_mirror`), because its default changes;
-    - the error-tab and `_cli_error_outputs` tests.
+      `write_measurements_mirror`), because its default changes.
   - **PA6:** `tests/unit/gui/{builder,shell}/`, the red tune tests, `tests/unit/gui/analysis/`.
   - **PA9:** `tests/unit/gui/shell/`, `tests/unit/gui/builder/test_reference_metadata.py`,
     `tests/unit/gui/run_console/test_reference_requirement.py`, `tests/unit/gui/tune/`,
@@ -1620,9 +1682,7 @@ FEATURES row:
   that keys on the CSS class. The existing vocabulary guard
   (`tests/unit/gui/shell/test_runs_registry.py:1268`) catches a missed spelling. A Recent Runs
   render test covers each `RunStatus`.
-- **R3. The error-analysis schema bump touches a rollback-capable publisher** shared with the
-  CLI's recompile re-emit. A version-1 journal on disk mid-rollback must still validate. Both
-  directions are pinned with tests.
+- **R3.** *Withdrawn: D18 defers the error-analysis schema bump to §8.*
 - **R4. The two aggregate-proof checks disagree after curation** (§3.2). The verdict avoids
   `valid_aggregate_snapshot`.
   - **Where the strict check still applies.** The waiter's `_published` uses it as its third
@@ -1672,10 +1732,13 @@ FEATURES row:
   as ambiguous. It predates the spec and is not changed here.
 - **R13. #282's waiter rewrite conflicts with PA4's** (§1 step 4, review I2). The conflict is
   resolved in #282's rebase, not in PR A, and is pinned by the rebase gate tests (§6).
-- **R14. D10 lets the GUI relaunch into an output a CLI user also works on.** The liveness
-  authorities (`active`) and the owner lock still prevent two concurrent writers. A CLI user
-  relaunching *after* a GUI launch is fenced by the CLI's own live-SLURM guard. Nothing new
-  is lost, but a GUI user can now continue a CLI user's run.
+- **R14. D10 opens a concurrent-writer window against a local CLI run (corrected; D17).** A
+  local CLI process holds no liveness authority (`sdk_/_run_state.py:1078-1140`) and takes no
+  output-wide lock, and a re-run of a run with failures always re-finalizes (§3.2). So the GUI
+  can claim and launch into a confirmed output while a local CLI run is re-running it. Before
+  D10 the gate refused every `failed` output; the same window already existed for `complete`
+  outputs, whose re-run is a no-op. A SLURM CLI run is still fenced. Accepted and documented
+  (D17); a CLI liveness record would be a CLI change outside both PRs.
 
 ---
 
@@ -1703,6 +1766,12 @@ FEATURES row:
 >   - The writers (`_export.py:36-39, 51-54, 86`, `_winner.py:100-106`,
 >     `_callbacks.py:2424-2428`) should retire the old typed twin, as
 >     `tune/_tune_cli/_run.py:89-101` does.
+> - **Error analysis as TSV (D18).** `error_analysis.tsv` under a version-2 publication: the
+>   name-set validators (`_error_tab/_publication.py:490-495, 638-644, 662-676, 710-714`), the
+>   journal writer (`:369`), `_generation_digest`'s pinned version (`:799-827`, so an unchanged
+>   v1 tree is not "already published", `:331-338`), version-1 reads and rollback, and
+>   retiring `error_analysis.csv` after publishing (drop `"error_analysis"` from
+>   `_KEPT_CSV_STEMS`).
 
 ---
 
@@ -1730,8 +1799,7 @@ FEATURES row:
    only after a successful TSV write (PA5).
 10. **`FilteredMeasurements` gets a one-writer swap, CSV to TSV**: neither left as is nor
     deleted (PA5).
-11. **Error analysis moves to TSV** under a version-2 receipt. Version 1 is still read, and the
-    live CSV is retired after publishing (PA5).
+11. *Withdrawn (D18): error analysis stays CSV.*
 12. **One sdk_ predicate, `is_pipeline_config_path`, for every mounted listing surface** (PA6).
 13. **The `ExpectedVsDetectedCount` `.tsv` extension is justified on CLI parity** (PA9).
 14. **The mutation receipt records the failed count N** (PA10).
@@ -1749,6 +1817,12 @@ FEATURES row:
 21. **Validate is disabled in measure mode** (PB5 a).
 22. **A measure run's exit code is authoritative.** N is defined and worded the way the CLI
     counts it (PB5).
+23. **`RunState` gains `finalization_digests` and `process_only_layer`** from
+    `resolve_run_state`'s one config read, so the verdict needs no second read (PA4).
+24. **The verdict's comparisons are two shared helpers**, `_identity_digests_match` and
+    `_source_set_matches`, so rule 1 can call them with its own binding (PA4).
+25. **The aggregate proof records `excluded_work_ids`**, so the exit-5 line can name the
+    excluded stores (PA4, D15).
 
 ---
 
@@ -1795,12 +1869,26 @@ These settle the first draft's eight questions, the merge-order question (D9), t
   excluded an unprojectable store, whose proof omits a verified image; the metadata example
   above rarely falls inside the waiter's window. PA4 names it, tests it, and gives the exit-5
   line a variant; PA8 lists the docs that describe exit 5.*
+- **D15 (user, 2026-11-25; plan finding 1). `--accept-failures` stays strict.** It maps only a
+  final `3` to `0`. D14's exit `5` for an excluded unreadable store stays `5`, and the waiter's
+  line names the excluded stores and says to fix or remove them (PA4).
+- **D16 (user, 2026-11-25; plan review Q1). An all-failed run is `complete_with_failures`**,
+  through the verdict's explicit no-proof arm (PA4 step 4). The waiter stays at `3`, Recent
+  Runs reads "complete · N failed", and the GUI can relaunch it with `--retry-failures` (D10).
+- **D17 (user, 2026-11-25; plan review Q3). The local-CLI window is accepted and documented.**
+  D10 can let the GUI claim an output a local CLI process may be re-running, because nothing
+  records local CLI liveness. R14 is corrected; the tutorial and docs say not to run the same
+  output from the CLI and the GUI at once (PA7, PA8, PA11).
+- **D18 (user, 2026-11-25; plan review Q4). The error-analysis TSV is deferred** to the
+  follow-up issue (§8). `error_analysis.csv` stays, and `"error_analysis"` stays in
+  `_KEPT_CSV_STEMS`; only `measurements` leaves it (PA5, PA8).
 
 ---
 
 ## 11. Open questions (only the user can answer)
 
-None. D9 settled the `main` window and D14 the waiter's exit 3.
+None. D9 settled the `main` window, D14 the waiter's exit 3, and D15–D18 the plan review's
+questions.
 
 ---
 
@@ -1857,3 +1945,17 @@ The review is `docs/superpowers/reports/2026-11-24-gui-dvc-followups/spec-review
 | **N6** The import-walk edit | PA5: assert `MEASUREMENTS_TSV` only |
 | **N7** A killed GUI relaunch strands the user on the CLI | PA11 and PA7's tutorial text say so; the refusal message names the CLI re-run |
 | **C4 note** A Refresh before the re-applying write | PA10's re-run test refreshes the viewer first |
+
+**Plan review** (`reports/2026-11-24-gui-dvc-followups/plan-review.md`), the findings that
+changed the spec:
+
+| Finding | Fix |
+|---|---|
+| **C1** An all-failed run decided by accident | D16: PA4 step 4, the no-proof arm. The exit-5 variant prints only when this generation published a proof |
+| **I1** The verdict had no config source | PA4: `RunState.finalization_digests` and `.process_only_layer`; step 2 over `state.images`; two shared helpers. §9 calls 23–24 |
+| **I2, I3** No slot for N | PA4 "Edits (a) requires": `_Observation`, `_apply`, `compare_and_set`, `_rehydrated_status` and its two consumers |
+| **I4** The run console's pipeline picker | PA6: a row for `run_console/_form.py:58-73`, and the builder wrappers |
+| **I5** More consumers of the 0/3 result | PA1: `_SlurmCompletion.finished`, the banner, `shell/_app.py:215, 681` |
+| **I6** The error-analysis v2 early return | D18: deferred to §8, with I6's two extra sites recorded there |
+| **I12** R14 was wrong | D17: R14 corrected; PA11, PA7 and PA8 document the window |
+| **Plan finding 1** `--accept-failures` and exit 5 | D15: strict; the line names the excluded stores (`excluded_work_ids`, §9 call 25) |

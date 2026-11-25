@@ -285,3 +285,101 @@ PA8 deletes the file at the tree's next finalize. By C4, that includes every pla
   - The alternative is a CLI change: finalize applies `curation_labels.parquet` to the mirror it seeds.
 - **Q3 (from I11).** Update the ucr_029 and ucr_033 plotting scripts to `measurements.tsv` before PR A merges, or accept that they break at the next finalize of a live tree?
 - **Q4 (from C3).** Show the U16 measure leftover as `failed` with the "re-run the same command" detail, or add a new terminal status for it?
+
+---
+
+## Re-review (revision 3, `18321031c`)
+
+**Scope.** Each Critical and Important finding above, checked against the revised spec text and against the code at the same bases (PR A `36b9e840e`, PR B `0993c8e06`). New problems the revision introduced are listed after the findings. As requested: the sdk_ verdict, PA11's claim gate, and D14's waiter change.
+
+**Verdict: ready for planning.** Every Critical and Important finding is resolved in design, and nothing below blocks writing the plan. Two new findings, N1 and N2, change function contracts, and the plan's first tasks depend on them. Fix them in the spec before the plan is written; they are a few sentences each, not a redesign. N3 is a docs-and-message gap in D14's contract change.
+
+### Status of each original finding
+
+| Finding | Status | Note |
+|---|---|---|
+| **C1** stale aggregate proof | **Resolved** | PA4 makes the five comparisons against the aggregate proof, through a helper shared with `_run_proof_covers_current_inventory`. I checked each field the comparisons read: `identity.inventory_digest`, `scientific_config_digest` and `finalization_input_digest` come from `state.config` (`sdk_/_run_state.py:305-327`). The aggregate proof writes the same fields from the same config (`_cli/_cli_completion.py:1239-1262`), with `source_work_ids` taken from the per-image records (`_cli_finalize_run.py:970-982`, `_cli_finalize_fanout.py:488-520`). So the twin holds after a forward finalize, a recompile, and a measure pass (whose records keep their forward `work_id`). The function's signature has a new defect, N1 |
+| **C2** claim gate refused every failed output | **Resolved** | PA11. The table of what stays refused matches the code paths at `_runs_registry.py:1283-1300, 1462-1479`. See N7 for one user-visible consequence |
+| **C3** `incomplete` wedged the output | **Resolved** | D13: the status is terminal `failed`, and a test pins that the observer stops and `allocate` succeeds |
+| **C4** re-run resets the mirror | **Resolved** | D11 is documented, and §3.1/§3.2 are corrected. The rewritten PA10 test needs a Refresh step between the CLI re-run and "the next GUI curation write": after a re-finalize the session's fingerprint no longer matches, so `_publish_if_current` refuses the write until the viewer reloads (`_curation_labels.py:780-800`). That is a plan detail |
+| **I1** `_cli` import | **Resolved** | The verdict is in sdk_. Only the observer uses the `_cli_wait` wrapper |
+| **I2** #282 conflict | **Resolved** | §1 step 4, R13, and the rebase-gate tests |
+| **I3** measure N | **Resolved** | Defined the way `_run_failure_count` defines it, with the wording chosen by which source applied |
+| **I4** badge currency | **Resolved** | The new arm falls through to `snapshot_is_current` |
+| **I5** exit 4 cancel | **Partly** | The cancel is gone, but the new flag opens a different path. See N2 |
+| **I6** 0/3 arm | **Resolved** | A separate result type, the three seam sites, a new registry method, and the cancel race |
+| **I7** stale CSV fallback | **Resolved** | Both text files are unlinked on a failed TSV write |
+| **I8** reference snapshot | **Resolved** | The PA9 row and its test |
+| **I9** U12 hint | **Resolved** | The hint is the resolver, then the adoption |
+| **I10** visibility copy / hidden flags | **Resolved** | Visibility comes from the resolver. The flags are sent only while the section is shown, and `gpu_slurm_given` comes from the sent tokens |
+| **I11** external CSV consumers | **Decided** (D12) | R6a lists the three scripts |
+
+The 19 Minor findings are all addressed in §12. I spot-checked Minors 1, 2, 3, 6, 10, 11, 13, 16 and 19 against the revised text, and each fix holds. (Minor 19 checks out: 29 files contain `write_measurements_mirror`, one of them the definition, so there are 28 callers.)
+
+### New findings in revision 3
+
+**N1 (Important). `run_finished_with_failures(output_dir)` does its own `resolve_run_state`, with no depth given.**
+- The callers need different depths:
+  - **The mutation guard** must judge its own fresh and verified **deep** states (`_mutation_guard.py:136-177`). A verdict from a separate pass can describe a different instant than the identity digest it is compared beside.
+  - **The claim gate** runs **shallow**, under the exclusive owner lock, by a recorded decision (`_runs_registry.py:1436-1446`).
+  - **The snapshot badge** polls **shallow** (`_snapshot_status.py:110-121`).
+  - **The waiter's** `_run_snapshot` exists so that "the verdict and the counts describe the same instant" (`_cli_wait.py:116-130`). A second pass for rule 3 breaks that.
+- `decide_wait_outcome` is a pure function of values, and its tests rely on that (`tests/unit/cli/test_cli_wait.py:3-8`). D14 as worded ("composes it") would put an I/O call inside it.
+- PA10's own `run_permits_mutation(state, output_dir)` already holds a state, and then calls a function that resolves again.
+
+*Fix:* change the signature to `run_finished_with_failures(state: RunState, output_dir) -> int | None`. Each caller passes the state it already resolved at its own depth; the function reads only the aggregate proof beside it. The waiter computes the verdict inside `_run_snapshot`'s single pass and passes a value into `decide_wait_outcome`, which stays pure.
+
+**N2 (Important). With `cancel_inactive=False`, `_reconcile_submission` can bind the GUI record to an old generation.**
+- **What the flag skips.** It skips only the early return at `_slurm.py:652-656`. Execution then falls through to the ledger and comment reconciliation of whatever generation the lifecycle on disk names.
+- **When that is a previous generation.** On exit 2 (refused before submitting), and on exit 4 with no job set, the fence on disk can belong to a previous, inactive generation, for example one cancelled while it still had `intent` rows.
+- **The result.** The fall-through returns unresolved tokens, and `submit_slurm` raises `SlurmSubmitPending` (`:844-856`). The callback then persists the binding of the GUI record to that **old** generation and sets it `submitting`/`unknown` (`run_console/_callbacks.py:1048-1084`). Before the flag, the cancel branch's early return made that impossible.
+- **The exit-2 wording.** PA1's exit-2 row says it reconciles "so any durable job of *this* generation is still attached, then raise". That is self-contradictory. A usage error is raised in the CLI's read-only half, before any submission (`_cli/CLAUDE.md`, "The run preflight"), so there is no job of this generation to attach.
+
+*Fix:* with `cancel_inactive=False`, an inactive fence returns "no jobs" without reconciling the ledger. Exit 2 should not reconcile at all: classify it as "refused, nothing submitted" and raise. Add a test: an inactive previous generation with an unresolved `intent` row, plus exit 2 or exit 4 with no job set, never raises `SlurmSubmitPending`, and never binds.
+
+**N3 (Important, documentation and message). D14 changes the exit-5 contract, but none of its user-facing surfaces are in the spec's lists:**
+- the waiter's exit-5 message, which says "this submission published nothing, so its finalizer failed or never ran" (`_cli_wait.py:419-424`). After D14 it is also printed for a publication that no longer covers the run;
+- `RunExitCode.ENDED_UNPUBLISHED`'s docstring (`sdk_/_exit_codes.py`, "published nothing");
+- `_cli/CLAUDE.md`'s exit-code table and its `phenotypic-wait` bullets;
+- the DVC how-to's exit-code table and the text about `3` (`docs/source/how_to/pages/dvc.md:373-392`).
+
+D14's example trigger, a metadata snapshot changed after finalize, almost never falls inside the waiter's window: the live-run guard refuses a second invocation while the run is live. The realistic trigger is a finalize that **excluded an unprojectable store** (`project_embedded_measurement_table`, root `CLAUDE.md`). Its proof's `source_set_digest` then omits a verified image, so that run moves from exit `3` to `5` deterministically.
+
+*Fix:* name that trigger in D14, test it, give the exit-5 line a "the published outputs no longer cover this run" variant, and add the four surfaces to PA8's docs list.
+
+**N4 (Minor). PA4 step 5 (the process arm) has no caller that needs it.**
+- The waiter keeps its own rule 4.
+- The GUI has no process mode, and the viewer does not open process trees.
+- In the claim gate it would make a process tree with failures "claimable" for a full-mode launch, which the CLI then refuses as an incompatible continuation (exit 1).
+
+Cut the arm, or exclude process runs from claimability.
+
+**N5 (Minor). Stale cross-references to §11.** §11 now says "None", but three lines still point into it:
+- `design.md:80` ("§11 Q1");
+- `design.md:598` ("so it is §11 Q2");
+- `design.md:679` ("subject to §11 Q2").
+
+These should cite D9 and D14.
+
+**N6 (Minor). PA5's edit to the import-walk test may not hold.** The edited assertion names `measurements_table_path`. But `_schema_cache` is specified to resolve through the `BundleLayout.measurements_table_path()` **method**, and the walk records only imported names (`test_gui_sdk_imports.py:54-86`). The new assertion fails unless some GUI module imports the free function. Assert `MEASUREMENTS_TSV` only, or have `_schema_cache` import the function.
+
+**N7 (Minor, a D10 consequence to document).** Suppose a GUI-launched `--retry-failures` run on a confirmed output is killed before it finalizes. That output becomes an unconfirmed `failed` run, and PA11 then refuses it from the GUI with "re-run it from the CLI". This is consistent with D10's "still refuses … unfinished". The tutorial should say so, because the user's own GUI relaunch is what strands them on the CLI.
+
+### What I checked for the three focus areas
+
+- **`run_finished_with_failures`.**
+  - Field by field, each comparison reads the same producer on both sides (citations in the C1 row above).
+  - `accepted_finalization_digests` accepts both spellings of the finalization digest (`sdk_/_run_state.py:1436-1462`).
+  - Curation touches no compared field, so PA10's fencing claim holds.
+  - Rule 1 for a forward-complete run is unaffected, because it binds to the run proof's own `source_set_digest` (`:1544-1578`).
+  - Remaining issue: the signature (N1).
+- **PA11.**
+  - The refused-states table is accurate against `_assert_output_claimable_locked` and `_foreign_run_conflict`.
+  - `complete_with_failures` joins `_TERMINAL_STATUSES`, so a GUI owner record carrying it passes the first check (`:1288`).
+  - A finalizer-closed fence is not a live authority (`sdk_/_run_state.py:1130-1147`), so a confirmed run is never `active`.
+  - Remaining items: N4 and N7.
+- **D14.**
+  - For generation-bound waits the tightening is real only where a publication excludes a verified image (N3). Measure and recompile resubmissions republish an aggregate proof whose fields match the comparisons, so they keep exit `3`.
+  - Rule 2 (complete plus published) is unchanged.
+  - Rule 4 (process) is unchanged.
+  - #282's drain loop freezes the first decided outcome. That is unaffected as long as the verdict comes from the same pass (N1).
