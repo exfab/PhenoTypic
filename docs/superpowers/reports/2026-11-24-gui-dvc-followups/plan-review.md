@@ -429,3 +429,245 @@ runs (a CLI change, outside both PRs).
    nothing records local CLI liveness. Options: accept it and document it (correcting R14), or add a mitigation.
 4. **Q4 (simplicity).** Keep the error-analysis TSV v2 in PR A, or defer it to the follow-up issue while the Error
    tab stays unmounted?
+
+---
+
+## Re-review of revision 2 (`9f7f91543`, 2026-11-25)
+
+**Scope:** the plan README's "Revision 2" table, every changed plan file, and the spec diff
+`53c36d251..9f7f91543` (D15–D18). I checked it against the code at `36b9e840e` (the worktree's
+`src/` is unchanged) and at `0993c8e06`.
+
+### Verdict
+
+**Not ready for C1. One new blocker, introduced by the revision.** All the earlier findings are
+resolved on paper, and most of the fixes are good. But the new `excluded_work_ids` call (D15)
+reverses a design decision that a test already pins, and it would tell users to remove valid
+stores.
+
+Counts:
+- **1 critical:** R2-C1.
+- **4 important:** R2-I1 to R2-I4.
+- **6 minor:** R2-M1 to R2-M6.
+
+The other findings are resolved: C1, C2, I1–I8, I10–I12 and the fixable minors. I9 is resolved
+only in part, and R2-I3 says why.
+
+### The original findings
+
+| Finding | Status | Evidence |
+|---|---|---|
+| C1 All-failed run | **Resolved** (D16). Its rationale is partly wrong: see R2-I2 | PA1 T1 pins a single answer for each case: `== 2`, a stray marker gives `None`, an unresolved image gives `None`. T2 pins exit `3`, T3 pins claimability, and the helper skips the aggregate when nothing verified |
+| C2 Mutants and isolation | **Resolved** | Deletion-mutant table. `unresolved_stems=` isolates step 2. `test_a_new_image_that_failed_returns_none` isolates inventory. `test_an_excluded_store_returns_none` isolates the source set (completion stays `failed`), and the inseparable count is named |
+| I1 Config source | **Resolved**, but one consumer is missed: R2-I1 | `RunState.finalization_digests` and `.process_only_layer` come from the one config read. The two helpers fit rule 1's two mappings (`_run_state.py:1508-1539`) |
+| I2, I3 N plumbing | **Resolved** | `_Observation`, `_apply`, the `compare_and_set` keyword and its reset, and `_rehydrated_status` returning N, persisted by both consumers |
+| I4 Run-console picker | **Resolved** | PA4 T1 lists `_form.py:58-73` and both wrappers |
+| I5 0/3 consumers | **Resolved** | `_SlurmCompletion.finished`, `:2672`, `shell/_app.py:215, 681`, and a banner assertion |
+| I6 Error-analysis early return | **Resolved by deferral** (D18). `_KEPT_CSV_STEMS == {"error_analysis","metadata"}` is consistent across the README, PA3 and spec PA8 | `grep` finds no remaining `error_analysis.tsv`, PA3 T4 or Lane T task in the plan |
+| I7 Vacuous pre-PA8 test | **Resolved**, with a mutation check | One note: `inject_descriptor` hand-edits the proof. This is the only way to fake a pre-PA8 proof after T1, so it is acceptable, but say so in the test |
+| I8 Lanes | **Resolved** for Lane T (removed). Lane V has a residual risk: R2-M1 | |
+| I9 Flip test, guard mutants | **Partly resolved.** The test as written fails for the wrong reason: R2-I3 | |
+| I10 Review Focus 4 | **Resolved** | The same record goes through `compare_and_set` and `observe_local_exit(0)` |
+| I11 Rebase | **Resolved** | `git rebase --onto origin/main 36b9e840e`, `gh pr view 281`, the push from the root checkout, and the plan committed before C1 |
+| I12 R14 | **Resolved** (D17) | R14 corrected; the docs and tutorial say not to run the same output from the CLI and the GUI at once |
+
+### Critical
+
+#### R2-C1. `excluded_work_ids` blames late images on the projection, contradicting a design decision that is already pinned
+
+**Where:**
+- PA1 T2 Interfaces: `"excluded_work_ids": sorted(<currently verified work ids> - set(source_work_ids))`, read with `_current_success_work_ids`;
+- spec PA4's D15 line;
+- `test_an_excluded_store_exits_5_naming_it`.
+
+**Evidence:**
+- **The diff measures a gap, not an exclusion.** Under a rolling input, images keep verifying
+  between the merge and the proof. `publish_aggregate_snapshot`'s own docstring says this is why
+  `source_work_ids` is passed in rather than derived live (`_cli_completion.py:1132-1150`), and the
+  fan-out writer says "`planned` is a strict subset of `authorized` with nothing wrong"
+  (`_cli_finalize_fanout.py:700-706`). On such a correct run, the D15 line would print "leave out
+  X, because the finalizer could not project their stores… Fix or remove those stores".
+- **The sdk_ reader made the opposite decision on purpose, and a test pins it.**
+  - `_advisories` reports the certified-vs-verified gap with the comment "REPORTS THE GAP, NEVER
+    DIAGNOSES IT. The same shortfall is produced by an excluded store and by the wholly ordinary
+    case of an image finishing after the master was published" (`sdk_/_run_state.py:1657-1679`).
+  - It names a store as excluded **only** from per-image stage facts that prove the store cannot
+    be projected: `declares_measurements is True and projectable_measurements is False`
+    (`:1680-1695`; recorded at `:965-975`).
+  - The test that pins this is `test_a_master_that_merely_predates_an_image_claims_no_exclusion`
+    (`tests/unit/sdk_/test_run_state.py:1351`).
+- **The remedy is destructive and inconsistent.** "Fix or remove those stores" invites deleting
+  valid results, which then costs a full reprocess on the GPU. The existing advisory says "the
+  store has to be re-measured".
+- **The test fixture models the benign case.** `omit_from_proof=("img-a",)` leaves img-a's store
+  valid and projectable, so it builds the rolling-input gap. The test then asserts the
+  misdiagnosis.
+- **It adds cost.** One more `valid_image_success` pass, with per-artifact hashing, on every
+  finalize and every migrate republish (`_hdf_to_zarr.py:800`).
+
+**Fix: drop the marker field.** No CLI write is needed. Build the exit-5 line from what `RunState`
+already knows:
+- names from the same predicate `_advisories` uses, factored into one sdk_ helper that both
+  share;
+- otherwise the gap wording, which names no cause.
+
+That keeps D15 (the line names the excluded stores) and removes the misdiagnosis. Then:
+- give the fixture a store that declares no projectable table, the existing advisory test's
+  pattern (`:1272`);
+- add a rolling-input case that must **not** name any store.
+
+If you do keep a marker field, it must be passed in from what the projection actually excluded
+(`build_master_frame`'s authorized sources minus `aggregated_sources`), never derived live.
+
+### Important
+
+#### R2-I1. Adding fields to `RunState` breaks a pinned test, and the plan does not say so
+
+**Where:** PA1 T1 Step 4 ("run … `test_run_state.py` … all pass").
+
+**Evidence:**
+- `test_the_demoted_sources_live_only_under_diagnostics` asserts `RunState`'s exact field set,
+  `{completion, identity, images, advisories, diagnostics, depth, verified_at}`
+  (`tests/unit/sdk_/test_run_state.py:56-75`), so Step 4 goes red.
+- `docs/source/contrib_guide/tracked_state.md:43-53` documents the same field table.
+
+**Not a problem:**
+- No `RunState` is serialized: there is no `asdict`, pickle or key-set check on it.
+- The only constructions outside the resolver use keyword arguments and get the defaults
+  (`tests/unit/gui/test_snapshot_status.py:71`).
+
+**Fix:** list both in PA1 T1's Files. Change the pinned set deliberately, with a docstring line
+saying why these are configuration rather than demoted evidence, so the edit is not taken as
+weakening. Add the two rows to the docs table.
+
+#### R2-I2. The no-proof arm's marker check guards the wrong case, and the spec's reasoning for it is wrong
+
+**Where:**
+- spec PA4 step 4 ("A marker beside zero verified images means … a restart that cleared success records");
+- PA1 T1 Interfaces ("`_valid_aggregate_proof` … also tells the no-proof arm whether a marker exists").
+
+**Evidence:**
+
+1. **`--restart` removes the marker together with the records.** The aggregate marker lives under
+   `.phenotypic/`, and `--restart` clears all machine state (`phenotypicCLI.py:1882-1905`,
+   `:3493-3500`) but **keeps `deliverables/`**. So the case the spec names cannot happen.
+2. **The case that can happen passes the arm.** A `--restart` over a once-complete tree whose
+   images now all fail gives "no marker, every image failed": the run is confirmed
+   `complete_with_failures` beside the **previous run's** master, mirror, `metrics.json` and
+   dashboard. An all-failed finalize writes no deliverable (`_cli_finalize_run.py:883-885`, "No
+   valid measurements found"), so nothing replaces them.
+   - The viewer cannot open such a tree, because `core_readable` needs the proof.
+   - Recent Runs would show "complete · N failed" beside a dashboard link from the previous run.
+3. **`_valid_aggregate_proof` cannot tell "absent" from "invalid".** It returns `None` for no
+   marker, a wrong version, an empty `required_outputs` and a tampered master alike
+   (`_run_state.py:1350-1377`). An implementation that follows the plan's wording confirms an
+   all-failed run beside a stale or tampered marker. The stray-marker test uses a *valid* marker,
+   so it cannot tell the two implementations apart.
+4. **A killed `--retry-failures` relaunch also reads finished.** "A run killed mid-image leaves that
+   image unresolved" is false for a retry: the image's earlier failure row is still in the
+   append-only journal (`_run_state.py:995-996`). The outcome is benign (the run stays
+   claimable), but the spec's claim and N7's "a killed relaunch … is an unconfirmed `failed` run"
+   are both untrue when the retry verified nothing.
+
+**Fix:**
+- Test existence by path: `aggregate_publication_marker_path(output_dir).exists()`, or
+  `_aggregate_proof_state`'s "no readable … marker" reason.
+- Add an invalid-version marker case to the stray-marker test.
+- Correct the spec's reasoning.
+- Decide the restart case, and pin the decision in a test: either the arm also requires no
+  master deliverable, or Recent Runs hides the dashboard link for a run confirmed with no proof.
+- Correct the killed-retry sentence in PA4 and N7.
+
+#### R2-I3. The PA5 flip test fails for the wrong reason, and it does not isolate the verdict
+
+**Where:** PA5 T1 `test_a_verdict_that_flips_between_bind_and_write_is_refused`.
+
+**Evidence:**
+- `publish_image_success_for(out, "img-b")` removes the only failure: a success outranks the
+  failure row (`_run_state.py:986-996`). The fresh completion therefore becomes **`incomplete`**
+  (there is no run proof), not `failed`.
+- The guard's message is `f"… run state is {_completion(fresh_state)}"`
+  (`_mutation_guard.py:140-144`), so `match="run state is failed"` never matches, before or after
+  the implementation.
+- Because completion itself flips, even a predicate that skipped the verdict and checked
+  `completion in {"complete", "failed"}` would still refuse, so the test does not show that the
+  verdict is asked.
+- The same applies to the T1 label on `test_a_killed_retry_continuation_returns_none`. That test is
+  killed by step 1, not by the source set. The excluded-store test is the one that really isolates
+  the source set.
+
+**Fix:**
+- Use three stems: one verified and two failed. Make one failed image succeed; completion stays
+  `failed` and only the source set moves.
+- Match "run state is failed".
+- Add the missing test for "a fresh verdict whose N differs from the bound one refuses" (spec call 14).
+
+#### R2-I4. The exit-5 line needs the `RunState`, which the waiter does not keep
+
+**Where:** PA1 T2: `_unpublished_line(..., state: RunState)`.
+
+**Evidence:**
+- `_run_snapshot` keeps only four counts in a `NamedTuple` (`_cli_wait.py:89-130`).
+- The reporting path (`_report_outcome`, `:427+`) has no `RunState` to hand.
+- So either the snapshot grows the state, or the line re-resolves, which breaks the "one pass"
+  rule that `test_the_verdict_comes_from_the_same_pass` pins.
+
+**Fix:** carry what the line needs on `RunSnapshot` (the names from R2-C1's helper), computed in
+the same pass.
+
+### Minor
+
+- **R2-M1 (Lane V's real disjointness).** Lane V's source files are disjoint from the main line, and
+  its four test files (the README says three) are not in PA3 T2's 56-file sweep. I checked the
+  union against `test_measurement_{source,routes,join_migration_run}` and `test_zarr_routes`.
+  - The residual risk is helper placement. PA2's tests call `add_second_measuring_run`,
+    `add_grid_only_run`, `rewrite_latest_table_with_zero_rows`, `run_from_fixture` and
+    `v1_pairs`, none of which exists in a shared module. A module-local `add_grid_only_run`
+    exists in `tests/unit/sdk_/test_tables_v2_state_readers.py:29`.
+  - The README's convention says "new shared helpers live in `tests/_output_layout.py`", which
+    PA1 T1 edits on the main line.
+  - Fix: state in PA2 that these helpers stay in its own test modules, and correct the README
+    count to four.
+- **R2-M2 (fixture names).** The fixtures use `FIXTURE_DATASET = "plate"` and
+  `FIXTURE_STEMS = ("a", "b")` (`tests/_output_layout.py:190-191`). The plan's tests use
+  `img-a`/`img-b`/`img-c` and expect `"d1/img-a"`. Also, `build_run_with_failures` has no
+  `stems` parameter, so how `img-c` enters the inventory is undefined. Define `stems` as
+  `FIXTURE_STEMS` ∪ failed ∪ unresolved, and assert the spelling the fixture actually produces.
+- **R2-M3 (the SLURM all-failed waiter case).** D16's waiter test is local only
+  (`generation is None`). On SLURM, an all-failed finalizer logs and closes "terminal-incomplete"
+  instead of raising, when nothing verified (`_cli_checkpoint_handler.py:317-331`). Add one
+  generation-bound test that the fence it leaves satisfies `_published`, so exit `3` holds on
+  SLURM as D16 says.
+- **R2-M4 (one cancelled all-failed run, two answers).** For a cancelled all-failed SLURM run, the
+  observer goes through `finished_run_outcome` (not published, so `5`, so `failed`), while
+  rehydration goes through the bare verdict (`complete_with_failures`). One GUI restart flips its
+  status. Either pin the disagreement deliberately, or have rehydration's no-proof arm require a
+  finalizer-closed fence when a fence exists.
+- **R2-M5 (the `commit_guard=None` path).** The plan unlinks unguarded when no guard is given. That
+  is sensible, but spec PA8 still says the unlink runs "under `commit_guard`" without the "when
+  one is given". Align the spec text.
+- **R2-M6 (PB3's helper move).** Moving `_refuse_measuring_reference_pipeline` and
+  `_reference_operation_paths_for` into `_cli/_cli_reference.py` changes their import path. Check
+  for monkeypatch targets before the move; there are none today (`grep` over `tests/`). Leave a
+  re-export only if the rebased #282 tree has gained one.
+
+### Verified in this round
+
+- **The marker's byte stability.** `test_deliverables_byte_stable.py` compares `deliverables/`
+  only, and its docstring exempts `.phenotypic/` (`:1-6`). The marker already carries
+  `published_at`, and no test or reader checks its exact key set (I grepped for `set(marker)`,
+  `marker.keys()` and the like across `src/` and `tests/`). So an additive field is safe, should
+  R2-C1 keep one.
+- **What `--restart` clears.** It clears `.phenotypic/` (journal and marker included) and keeps
+  `deliverables/` (`phenotypicCLI.py:3493-3500`). So stale failure rows cannot survive a restart;
+  only stale deliverables can (R2-I2).
+- **What failure rows are keyed by.** `_terminal_failures` keys rows by `work_id` without an epoch
+  (`_run_state.py:1042-1075`). A config or input change moves the work ids, so the spec's "a
+  changed configuration … leaves an image unresolved" holds.
+- **The rule-1 refactor.** `_identity_digests_match` and `_source_set_matches` fit rule 1
+  unchanged: inventory and scientific run before the process branch, and the source set goes
+  through `_source_set_binding`. The rule-1 tests `test_each_of_rule_ones_comparisons_is_load_bearing`
+  (`test_run_state.py:1034`) and `test_clause_one_is_load_bearing` (`:953`) exist to kill the
+  helper mutants, as T1 Step 5 requires.
+- **The task count.** 28 tasks: 18 in PR A, 10 in PR B. PA1 6, PA2 1, PA3 3, PA4 2, PA5 1, PA6 3,
+  PA7 2; PB0 1, PB1 2, PB2 1, PB3 3, PB4 3.
