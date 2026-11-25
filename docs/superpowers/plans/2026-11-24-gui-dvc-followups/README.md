@@ -1,7 +1,8 @@
 # GUI Follow-ups Implementation Plan (#283 PR A, #282 GUI items PR B)
 
-**Status:** revision 2 · 2026-11-25 · revised per `reports/2026-11-24-gui-dvc-followups/plan-review.md`
-and the user's decisions D15–D18; see "Revision 2" at the end
+**Status:** revision 3 · 2026-11-25 · revised per `reports/2026-11-24-gui-dvc-followups/plan-review.md`
+(the review, then its "Re-review of revision 2") and the user's decisions D15–D18; see
+"Revision 2" and "Revision 3" at the end
 **Spec:** `docs/superpowers/specs/2026-11-24-gui-dvc-followups/design.md`, as committed with this
 revision (decisions D1–D18, no open question)
 **Reviews behind the spec:** `docs/superpowers/reports/2026-11-24-gui-dvc-followups/spec-review.md`
@@ -63,9 +64,13 @@ shown, curated and relaunched as such, and the run console reaches #282's Stage 
   read names. `_GUI_WRITTEN_PROOF_DESCRIPTORS` keeps `measurements_csv`.
 - **The verdict** is `run_finished_with_failures(state, output_dir)`; its config comes from
   `RunState.finalization_digests` and `.process_only_layer`, filled by `resolve_run_state`'s
-  one read (spec PA4). An all-failed run is confirmed through the no-proof arm (D16).
+  one read (spec PA4). An all-failed run is confirmed through the no-proof arm (D16), which
+  tests the marker **by path**, refuses a master or mirror Parquet left by another generation,
+  and requires a finalizer-closed fence when a fence exists.
 - **`--accept-failures` maps only `3` to `0`** (D15). The exit-5 variant prints only when this
-  generation published an aggregate proof.
+  generation published an aggregate proof, and names a store only through
+  `excluded_store_names` (the per-image unprojectable predicate, shared with `_advisories`),
+  never from "verified minus sources". No marker field is added.
 - **D17:** the claim gate cannot see a local CLI run; the docs say so, and no task adds a lock.
 - **Suffixes:** canonical `.pht-pipe.json`, `.pht-op.json`, `.pht-cc.json`, `.pht-tune.json`;
   legacy `.json.pht-*` read-only; a plain `pipeline.json` is never removed (#281 A4).
@@ -92,9 +97,12 @@ Inputs the spec implies but no spec test names. Each is pinned in the task named
 
 1. **A run whose every image failed** (verified = 0, no aggregate proof possible). It is
    `complete_with_failures` (D16): the verdict returns N, the waiter exits `3`, Recent Runs reads
-   "complete · N failed", and the GUI can relaunch it. A stray marker or an unresolved image
-   keeps it `failed`. Pinned in PA1 T1 (`test_an_all_failed_run_is_finished_with_failures`,
-   `test_an_all_failed_run_with_a_stray_marker_returns_none`,
+   "complete · N failed", and the GUI can relaunch it. Any marker, an old master from before a
+   `--restart`, a non-finalizer fence or an unresolved image keeps it `failed`. Pinned in PA1 T1
+   (`test_an_all_failed_run_is_finished_with_failures`,
+   `test_an_all_failed_run_beside_any_marker_returns_none`,
+   `test_an_all_failed_restart_beside_an_old_master_returns_none`,
+   `test_an_all_failed_run_reads_its_fence`,
    `test_an_all_failed_run_with_an_unresolved_image_returns_none`), PA1 T2
    (`test_an_all_failed_run_exits_3`) and PA1 T3
    (`test_an_all_failed_cli_run_is_claimable_for_retry_failures`).
@@ -216,7 +224,9 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 | `sdk_/_run_state.py`, `sdk_/__init__.py` | PA1 T1, PA4 T1 (`is_pipeline_config_path` goes in `_io_constants.py`, export in `__init__`) |
 | `_cli/_cli_wait.py` | PA1 T2 |
 | `sdk_/_state_types.py` | PA1 T1 |
-| `_cli/_cli_completion.py` | PA1 T2 (`excluded_work_ids`), PA3 T1 (`required_paths`) |
+| `_cli/_cli_completion.py` | PA3 T1 (`required_paths`) |
+| `_cli/_cli_slurm_lifecycle.py` | PA1 T1 (`FENCE_CLOSED_BY_FINALIZER` re-export) |
+| `tests/unit/sdk_/test_run_state.py` | PA1 T1 (field set; moved `authorize_measurements`) |
 | `_gui/shell/_runs_registry.py` | PA1 T3, T4, PB3 T2 |
 | `_gui/run_console/_slurm.py` | PA1 T4 |
 | `_gui/run_console/_callbacks.py` | PA1 T3 (`_TERMINAL_RUN_STATUSES`), T4, PA4 T1, T2, PB1 T2, PB2 T1, PB3 T1 |
@@ -236,8 +246,9 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 **Parallel lanes** (zero file overlap with the line they run beside, each in its own
 worktree off the branch tip, merged back by the orchestrator):
 - **Lane V:** PA2 T1 runs alongside PA1. Its files (`results_viewer/_measurement_source.py`,
-  `_zarr_routes.py`, `_shared/tiles.py`, and three `tests/unit/gui/results_viewer/` files) touch
-  nothing on the main line.
+  `_zarr_routes.py`, `_shared/tiles.py`, and four test files: `test_measurement_source.py`,
+  `test_measurement_routes.py`, `test_measurement_join_migration_run.py`, `test_zarr_routes.py`)
+  touch nothing on the main line. Its new helpers stay in its own test modules (R2-M1).
 - **No Lane T** (plan review I8). PA3 runs on the main line after PA1: it shares
   `tests/_output_layout.py`, `tests/unit/gui/test_snapshot_status.py`, `sdk_/_io_constants.py`
   and `tests/unit/sdk_/test_io_constants.py` with PA1 and PA4. Before PA3 T1 lands,
@@ -316,7 +327,7 @@ references). A reviewer is never weaker than its implementer.
 | PA8 test sweep (56 files: 30 naming the CSV ∪ 28 callers; 62 importers run) | PA3 T2 |
 | PA5 curation TSV, failed-write unlink, fingerprints, `FilteredMeasurements`, `_schema_cache`, import-walk (N6) | PA3 T3 |
 | PA5 error analysis TSV v2 | **deferred (D18)**: spec §8, no task |
-| D15 `--accept-failures` strict; `excluded_work_ids`; the exit-5 line | PA1 T2 |
+| D15 `--accept-failures` strict; the exit-5 line names stores through `excluded_store_names` | PA1 T1 (helper), T2 (line) |
 | D16 the all-failed no-proof arm | PA1 T1, T2, T3 |
 | D17 the local-CLI window | PA6 T1, T2 (docs, tutorials) |
 | G6, PA6 suffixes, reds #1–6, RecipeState, capture script, e2e fixtures | PA4 T1 |
@@ -387,6 +398,26 @@ decisions D15–D18 (spec §10). Each finding, and where it is fixed:
 | **Simplicity** `TUNING_SPEC_TYPED_SUFFIXES` | PA4 T1: derived from `TUNING_CONFIG_SUFFIXES` |
 | **Simplicity** PA5's rename | Kept: the spec asks for `run_permits_mutation`; the four test refs are listed |
 | **D15–D18** | Spec §10; PA1 T1–T3 (D15, D16), PA6 (D17), PA3 (D18) |
+
+## Revision 3 (plan re-review)
+
+Revised 2026-11-25 against `plan-review.md`, "Re-review of revision 2" (`9a31a5361`). Each
+finding, and where it is fixed:
+
+| Finding | Fix |
+|---|---|
+| **R2-C1** `excluded_work_ids` measured a gap, not an exclusion | Dropped from the spec and plan; `publish_aggregate_snapshot` is unchanged. PA1 T1: `excluded_store_names(images)` factored out of `_advisories` (`_run_state.py:1680-1695`), shared by both; PA1 T2: the line names a store only through it, otherwise the gap line. The fixture's `omit_from_proof` is replaced by `unprojectable_stems` (a real unprojectable store, `authorize_measurements(projectable=False)`) and `late_stems` (the rolling-input gap, which must name no store). `test_a_master_that_merely_predates_an_image_claims_no_exclusion` stays green unedited |
+| **R2-I1** The pinned `RunState` field set | PA1 T1 Files: `test_run_state.py:56-75` and `tracked_state.md:43-53` change deliberately, with the docstring line |
+| **R2-I2** The no-proof arm | Spec PA4 step 4 and PA1 T1: the marker tested by path (`[valid]`, `[wrong_version]`, `[empty_outputs]`); no master or mirror Parquet from another generation (`test_an_all_failed_restart_beside_an_old_master_returns_none`, and its confirmed twin with no deliverables); the killed-retry case pinned both ways (`test_a_killed_retry_that_verified_nothing_stays_confirmed`, `test_a_retry_that_verified_one_image_returns_none`); spec N7 and PA7's tutorial line corrected |
+| **R2-I3** The PA5 flip test | PA5 T1: three stems, completion asserted `failed`, only the verdict flips; `test_a_fresh_verdict_whose_n_differs_refuses` added. PA1 T1's retry test relabelled and given three stems, so it isolates the source set |
+| **R2-I4** The waiter keeps no `RunState` | PA1 T2: `RunSnapshot.excluded_stores` from the same pass; `_unpublished_line` takes it; `test_the_excluded_names_come_from_the_same_pass` |
+| **R2-M1** Lane V helpers; the count | PA2: its helpers stay in its own test modules; README: four test files |
+| **R2-M2** Fixture names | PA1 T1: the inventory is `FIXTURE_STEMS` ∪ named stems in `FIXTURE_DATASET` (`"plate"`); tests use `a`/`b`/`c` and expect `plate/c` |
+| **R2-M3** The SLURM all-failed waiter case | PA1 T2 `test_an_all_failed_slurm_run_exits_3`, through the real finalizer path |
+| **R2-M4** One cancelled all-failed run, two answers | Spec PA4 step 4: the no-proof arm requires a finalizer-closed fence when one exists; `FENCE_CLOSED_BY_FINALIZER` moves to sdk_; `test_an_all_failed_run_reads_its_fence` |
+| **R2-M5** "under `commit_guard`" | Spec PA8: "when one is given" |
+| **R2-M6** PB3's helper move | PB3 T1: grep for monkeypatch targets on the rebased tree first; re-export only if one exists |
+| **I7 note** `inject_descriptor` hand-edits the proof | PA3 T1's test says so (no writer produces a pre-PA8 proof after T1); PA1 T1's `write_marker` invalid kinds carry the same note |
 
 ## Render
 

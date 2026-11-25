@@ -632,8 +632,10 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><p><strong>The no-proof arm (D16)</strong> (no image verified). An all-failed run can have no aggregate proof: <code>publish_aggregate_snapshot</code> refuses zero successes (<code>_cli_completion.py:1179-1181</code>). In place of the proof's digests the arm requires:</p>
 <ul>
 <li><strong>every</strong> accepted image's verdict is <code>failed</code>. <code>resolve_run_state</code> matches failure records against the <strong>current</strong> inventory's work ids, which bind the processing configuration and the input (<code>_cli/_cli_failure_tracker.py:276, 507</code>), so a changed configuration or input set leaves an image unresolved rather than failed, and step 2 already refuses that;</li>
-<li><code>completion == "failed"</code> (step 1), so no liveness authority claims the run; a run killed mid-image leaves that image unresolved;</li>
-<li><strong>no aggregate publication marker exists at all.</strong> A marker beside zero verified images means verified images were lost after a publication (a restart that cleared success records), which is not a finished run.</li>
+<li><code>completion == "failed"</code> (step 1), so no liveness authority claims the run. A first run killed mid-image leaves that image unresolved. A killed <code>--retry-failures</code> relaunch that verified nothing leaves every earlier failure row in the append-only journal (<code>_run_state.py:995-996</code>), so the run reads confirmed again, unchanged; that is benign, and it stays claimable (PA11, N7);</li>
+<li><strong>no aggregate publication marker file exists</strong>, tested by path: <code>aggregate_publication_marker_path(output_dir).exists()</code> is false. Never through <code>_valid_aggregate_proof</code>, which returns <code>None</code> alike for an absent, wrong-version, empty or tampered marker (<code>_run_state.py:1350-1377</code>; plan re-review R2-I2). A marker of any kind beside zero verified images is not a finished all-failed run;</li>
+<li><strong>no deliverable from another generation:</strong> neither <code>master_measurements.parquet</code> nor <code>measurements.parquet</code> exists under <code>deliverables/</code>. An all-failed finalize writes no deliverable: locally it returns before writing ("No valid measurements found", <code>_cli_finalize_run.py:883-885</code>), and a SLURM finalizer logs and closes the lifecycle terminal-incomplete (<code>_cli_checkpoint_handler.py:317-331</code>). So either file beside zero verified images was left by an earlier generation: <code>--restart</code> clears <code>.phenotypic/</code>, journal and marker included, but keeps <code>deliverables/</code> (<code>phenotypicCLI.py:3493-3500</code>). Such a tree reads <code>failed</code>, not finished, and is re-run from the CLI or with <code>--overwrite</code>;</li>
+<li><strong>a fence, when one exists, was closed by its finalizer:</strong> if <code>slurm_lifecycle_path(output_dir)</code> exists, it is inactive, <code>closed_by == "finalizer"</code>, and has no <code>terminal_status</code>. A cancelled all-failed SLURM run therefore reads <code>failed</code> here as it does in the observer, instead of flipping to <code>complete_with_failures</code> at the next GUI restart (plan re-review R2-M4). <code>FENCE_CLOSED_BY_FINALIZER</code> moves to <code>sdk_/_io_constants.py</code>, and <code>_cli/_cli_slurm_lifecycle.py:47</code> re-exports it, so sdk_ need not import <code>_cli</code>.</li>
 </ul>
 <p>No finalization input is compared: nothing was published, so nothing can be stale. N is the number of accepted images.</p></li>
 <li><p><strong>Not a process run.</strong> A run whose config records <code>process_only_layer</code> returns <code>None</code> (N4). No caller needs a process arm: the waiter keeps its own rule 4 (<code>_cli_wait.py:356-364</code>), the GUI has no process mode, and the viewer does not open process trees. A process tree with failures therefore stays unclaimable (PA11), which is right, because the CLI would refuse a full-mode continuation of it as incompatible.</p></li>
@@ -643,7 +645,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><code>finalization_digests: frozenset[str] = frozenset()</code>, the value of <code>accepted_finalization_digests(config)</code> (<code>:1436</code>);</li>
 <li><code>process_only_layer: str | None = None</code>.</li>
 </ul>
-<p>The defaults keep every existing <code>RunState(...)</code> construction valid. <strong>[call]</strong> This is chosen over re-reading <code>processing_state.json</code> inside the verdict and comparing identity digests: with one read the verdict can never describe a different instant from the caller's state, which is the point of N1. The verdict's one read is the aggregate proof itself, whose fields are self-consistent.</p>
+<p>The defaults keep every existing <code>RunState(...)</code> construction valid. Two pinned surfaces change deliberately (plan re-review R2-I1): <code>test_the_demoted_sources_live_only_under_diagnostics</code> asserts <code>RunState</code>'s exact field set (<code>tests/unit/sdk_/test_run_state.py:56-75</code>), and <code>docs/source/contrib_guide/tracked_state.md:43-53</code> tables the fields. Both gain the two names, with a docstring line saying they are configuration the resolver already read, not demoted evidence. <strong>[call]</strong> This is chosen over re-reading <code>processing_state.json</code> inside the verdict and comparing identity digests: with one read the verdict can never describe a different instant from the caller's state, which is the point of N1. The verdict's one read is the aggregate proof itself, whose fields are self-consistent.</p>
 <p><strong>The shared helpers.</strong> Rule 1 compares the inventory and scientific digests before its process branch (<code>:1508-1520</code>), and takes its source set from <code>_source_set_binding(output_dir, proof)</code> (<code>:1528</code>), which for a pre-P4 run proof is the aggregate's, not <code>proof</code>. So the comparisons are two private helpers, <code>_identity_digests_match(proof, identity)</code> (inventory, scientific) and <code>_source_set_matches(binding, verified)</code> (source set and count, given a binding mapping). Both arms call both, so they cannot drift. <strong>[call]</strong></p>
 <p><strong>Who calls it, and with which state (N1):</strong></p>
 <ul>
@@ -655,15 +657,16 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>the claim gate (PA11): the shallow state <code>_foreign_run_conflict</code> resolves under the owner lock (<code>:1436-1446</code>, <code>:1460</code>);</li>
 <li>the write-authority checks (PA10): each passes the state it judges. The mutation guard passes its <strong>fresh</strong> and its <strong>verified deep</strong> states (<code>_mutation_guard.py:136-177</code>), so the verdict and the identity digest it is compared beside describe the same instant.</li>
 </ul></li>
-<li><p><strong>The waiter.</strong> <code>_run_snapshot</code> (<code>_cli_wait.py:116-130</code>) computes the verdict in its single pass, and <code>RunSnapshot</code> gains <code>finished_with_failures: int | None</code>, so "the verdict and the counts describe the same instant" still holds. <code>decide_wait_outcome</code> (<code>:309-366</code>) takes it as a <strong>value</strong> and stays a pure function (<code>tests/unit/cli/test_cli_wait.py:3-8</code>). Rule 3 becomes "<code>published</code> for this generation, and <code>finished_with_failures</code> is not <code>None</code>". Rule 4 (process) keeps its own arm. <strong>[call]</strong> This tightens the waiter (D14):</p>
+<li><p><strong>The waiter.</strong> <code>_run_snapshot</code> (<code>_cli_wait.py:116-130</code>) computes the verdict in its single pass, and <code>RunSnapshot</code> gains <code>finished_with_failures: int | None</code> and <code>excluded_stores: tuple[str, ...]</code> (R2-I4), so "the verdict and the counts describe the same instant" still holds. <code>decide_wait_outcome</code> (<code>:309-366</code>) takes it as a <strong>value</strong> and stays a pure function (<code>tests/unit/cli/test_cli_wait.py:3-8</code>). Rule 3 becomes "<code>published</code> for this generation, and <code>finished_with_failures</code> is not <code>None</code>". Rule 4 (process) keeps its own arm. <strong>[call]</strong> This tightens the waiter (D14):</p>
 <ul>
 <li>before, a publication by this generation that no longer covers the run returned <code>3</code>;</li>
 <li>now it returns <code>5</code>, <code>ENDED_UNPUBLISHED</code>.</li>
 <li><strong>The realistic trigger (N3)</strong> is a finalize that <strong>excluded an unprojectable store</strong> (<code>project_embedded_measurement_table</code>, <code>_cli/_cli_parquet_agg.py:277</code>; the root <code>CLAUDE.md</code>, "Output layout"). Its proof's <code>source_set_digest</code> omits a verified image, so such a run with failures moves from <code>3</code> to <code>5</code> deterministically. A metadata change after finalize almost never falls inside the waiter's window, because the live-run guard refuses a second invocation while the run is live.</li>
 <li><strong>The exit-5 line gains a variant.</strong> <code>_unpublished_line</code> (<code>_cli_wait.py:404-424</code>) prints "this submission published nothing, so its finalizer failed or never ran". The variant is printed <strong>only when this generation published an aggregate proof</strong> (its marker's <code>execution_epoch</code> is the generation; with no generation, a marker exists) and the verdict is <code>None</code>. It is never printed on <code>generation is None</code> alone, and never for an all-failed run, which D16 keeps at <code>3</code> (plan review C1).
 <ul>
-<li><strong>When the proof lists excluded stores (D15).</strong> <code>publish_aggregate_snapshot</code> (<code>_cli_completion.py:1120</code>) records <code>excluded_work_ids</code>: the currently verified images its <code>source_work_ids</code> leave out, sorted. It is an additive marker field with no version bump, and <code>.phenotypic/</code> is exempt from byte stability (#281 C11). The line names each image as <code>&lt;dataset&gt;/&lt;image&gt;</code> from <code>state.images</code>: "phenotypic-wait: the published outputs leave out <list>, because the finalizer could not project their stores (its log under <logs> says why). Fix or remove those stores, then re-run the same command." <strong>[call]</strong></li>
-<li><strong>Otherwise:</strong> "phenotypic-wait: this submission published, but its published outputs no longer cover the run (the metadata, pipeline or input set changed after it published). Re-run the same command."</li>
+<li><strong>When a store is demonstrably unprojectable (D15).</strong> The names come from the per-image stage facts <code>_advisories</code> already uses, never from a set difference: a verified image whose record authorizes an embedded table (<code>declares_measurements is True</code>) but whose store declares no column list to project it onto (<code>projectable_measurements is False</code>) (<code>_run_state.py:965-975, 1680-1695</code>). That predicate becomes one exported sdk_ helper, <code>excluded_store_names(images: Mapping[str, ImageState]) -&gt; tuple[str, ...]</code>, which <code>_advisories</code> and the waiter both call. The waiter computes it in <code>_run_snapshot</code>'s one pass and carries it on <code>RunSnapshot</code> (plan re-review R2-I4). The line: "phenotypic-wait: the published outputs leave out <list>, because their stores declare no table the finalizer can project (its log under <logs> says why). Fix those stores by re-measuring them, or remove them from the input, then re-run the same command." <strong>[call]</strong></li>
+<li><strong>Otherwise, the gap wording, which names no cause:</strong> "phenotypic-wait: this submission published, but its published outputs no longer cover the run: images verified after it published, or the metadata, pipeline or input set changed. Re-run the same command." A rolling input reaches this with nothing wrong, so no store is named (<code>test_a_master_that_merely_predates_an_image_claims_no_exclusion</code>, <code>tests/unit/sdk_/test_run_state.py:1351</code>, stays green).</li>
+<li><strong>No marker field is added</strong> (plan re-review R2-C1): a field derived as "verified minus <code>source_work_ids</code>" measures that gap, not an exclusion, and would name valid stores (<code>_cli_completion.py:1132-1150</code>, <code>_cli_finalize_fanout.py:700-706</code>).</li>
 <li><code>--accept-failures</code> still maps only a final <code>3</code> to <code>0</code> (D15).</li>
 </ul></li>
 </ul>
@@ -949,7 +952,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <ul>
 <li><strong><code>docs/source/tutorials/gui/04_run_local.md</code> and <code>05_run_slurm.md</code>:</strong>
 <ul>
-<li>one paragraph on <code>complete · N failed</code>: how it differs from <code>failed</code>, that the failed images have no rows, and that the output can be relaunched with <code>--retry-failures</code> (PA11). If that relaunch is killed before it finalizes, the GUI refuses the output, and it is resumed by re-running the same command from the CLI (N7). Never re-run the same output from the CLI and the GUI at once: nothing records a local CLI run's liveness, so the GUI cannot see it (D17);</li>
+<li>one paragraph on <code>complete · N failed</code>: how it differs from <code>failed</code>, that the failed images have no rows, and that the output can be relaunched with <code>--retry-failures</code> (PA11). If that relaunch is killed before it finalizes having verified at least one image, the GUI refuses the output, and it is resumed by re-running the same command from the CLI (N7); one that verified nothing leaves the output as it was, still relaunchable. Never re-run the same output from the CLI and the GUI at once: nothing records a local CLI run's liveness, so the GUI cannot see it (D17);</li>
 </ul></li>
 <li><strong><code>06_view_results.md</code>:</strong>
 <ul>
@@ -976,7 +979,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <tr class="odd">
 <td><code>_cli_output_manager.py:968-1003</code> <code>_seed_measurements</code></td>
 <td>writes <code>.tsv</code>, <code>.csv</code>, <code>.parquet</code>, each through <code>_guarded_terminal_best_effort</code> (<code>:99-115</code>), which swallows errors</td>
-<td>writes <code>.tsv</code> and <code>.parquet</code>. The old CSV is retired by <code>remove_stale_csv_sibling(measurements_tsv_path(output_dir))</code> only if both hold: (1) the TSV write <strong>succeeded</strong>, a fact the plan must carry out of the best-effort wrapper; (2) the unlink runs <strong>under <code>commit_guard</code></strong>. Unlike the unguarded sweeps at <code>:838</code> and <code>:1502</code> (review Minor 10). The docstring (<code>:975-983</code>) stops citing B9</td>
+<td>writes <code>.tsv</code> and <code>.parquet</code>. The old CSV is retired by <code>remove_stale_csv_sibling(measurements_tsv_path(output_dir))</code> only if both hold: (1) the TSV write <strong>succeeded</strong>, a fact the plan must carry out of the best-effort wrapper; (2) the unlink runs <strong>under <code>commit_guard</code> when one is given</strong>; with <code>commit_guard=None</code> (which <code>_guarded_terminal_call</code>, <code>:90-97</code>, allows) it runs unguarded, still after the TSV, like the sweeps at <code>:838</code> and <code>:1502</code> (review Minor 10; plan re-review R2-M5). The docstring (<code>:975-983</code>) stops citing B9</td>
 </tr>
 <tr class="even">
 <td><code>_cli_completion.py:1205-1210</code> <code>required_paths</code></td>
@@ -1287,7 +1290,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 </tbody>
 </table></div>
-<p><strong>A killed relaunch can only be resumed from the CLI (N7).</strong> Suppose a GUI-launched <code>--retry-failures</code> (or plain Run) relaunch on a confirmed output is killed before it finalizes. The output is then an unconfirmed <code>failed</code> run, and this gate refuses it, as D10's "still refuses … unfinished" requires. The GUI's own relaunch is what strands the user on the CLI, so the refusal message and the tutorial (PA7) both say to re-run the same command from the CLI.</p>
+<p><strong>A killed relaunch can only be resumed from the CLI (N7), if it verified something.</strong> Suppose a GUI-launched <code>--retry-failures</code> (or plain Run) relaunch on a confirmed output is killed before it finalizes. If it verified at least one image, the source set no longer matches the proof (or, for an all-failed run, an image is now verified with no proof), so the output is an unconfirmed <code>failed</code> run, and this gate refuses it, as D10's "still refuses … unfinished" requires. If it verified nothing, every earlier failure row is still in the journal and the proof (if any) still covers the run, so the output reads confirmed again, unchanged, and stays claimable (plan re-review R2-I2). The GUI's own relaunch is what strands the user on the CLI, so the refusal message and the tutorial (PA7) both say to re-run the same command from the CLI.</p>
 <p><strong>A local CLI run is invisible to the gate (D17).</strong> The liveness authorities are the SLURM fence and a GUI owner with a live pid (<code>sdk_/_run_state.py:1078-1140</code>); a local CLI process holds neither, and the CLI takes no output-wide lock (its one <code>exclusive_path_lock</code> guards the metadata snapshot, <code>phenotypicCLI.py:1255-1268</code>). So the GUI can claim a confirmed output that a local CLI process is re-running at that moment. This is accepted and documented: the tutorial (PA7) and the run docs (PA8) say not to run the same output from the CLI and the GUI at once.</p>
 <p>The refusal message for an unconfirmed <code>failed</code> run no longer calls a GUI-launched run "non-GUI". It says "output has an unfinished run with N failed image(s) of M accepted; re-run it from the CLI or wait for it to finish".</p>
 <p><strong>Tests</strong> (<code>tests/unit/gui/shell/test_runs_registry.py</code>):</p>
@@ -1861,7 +1864,9 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><strong>A measure run's exit code is authoritative.</strong> N is defined and worded the way the CLI counts it (PB5).</li>
 <li><strong><code>RunState</code> gains <code>finalization_digests</code> and <code>process_only_layer</code></strong> from <code>resolve_run_state</code>'s one config read, so the verdict needs no second read (PA4).</li>
 <li><strong>The verdict's comparisons are two shared helpers</strong>, <code>_identity_digests_match</code> and <code>_source_set_matches</code>, so rule 1 can call them with its own binding (PA4).</li>
-<li><strong>The aggregate proof records <code>excluded_work_ids</code></strong>, so the exit-5 line can name the excluded stores (PA4, D15).</li>
+<li><em>Withdrawn (plan re-review R2-C1): no <code>excluded_work_ids</code> field.</em></li>
+<li><strong><code>excluded_store_names(images)</code> is one sdk_ helper</strong> shared by <code>_advisories</code> and the waiter, and the waiter carries its result on <code>RunSnapshot</code> (PA4, D15).</li>
+<li><strong>The no-proof arm refuses stale deliverables and a non-finalizer fence</strong> (PA4 step 4).</li>
 </ol>
 <hr />
 <h2 id="10-decisions-user-2026-11-24">10. Decisions (user, 2026-11-24)</h2>
@@ -1881,7 +1886,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><strong>D13 (review Q4). A SLURM measure run that ends with unfinished images reads <code>failed</code>, terminal,</strong> with the detail "re-run the same command" (PB5).</li>
 <li><strong>D9. Hold #281, then merge back to back</strong> (settles R9, the <code>main</code> window). PR A is built and reviewed on #281's branch first. When PR A is ready, #281 merges to <code>main</code>; PR A is then rebased onto the fresh <code>origin/main</code>, its citations, the 13-red table and its checks are re-run there, and it merges at once. <code>main</code> never sits on the §3 breaks beyond that short gap.</li>
 <li><strong>D14. <code>phenotypic-wait</code> adopts the currency check</strong> (user, 2026-11-24; settles the Revision 3 question). The waiter's rule 3 goes through the shared sdk_ verdict, so a run whose published outputs no longer cover the current run (e.g. the metadata snapshot changed after finalize) exits <code>5</code> (<code>ENDED_UNPUBLISHED</code>), not <code>3</code>. Exit-code values are unchanged; exit <code>3</code> now always means the published outputs are current. The GUI and a DVC stage give one answer. The waiter's tests gain that case. <em>The realistic trigger (re-review N3) is a finalize that excluded an unprojectable store, whose proof omits a verified image; the metadata example above rarely falls inside the waiter's window. PA4 names it, tests it, and gives the exit-5 line a variant; PA8 lists the docs that describe exit 5.</em></li>
-<li><strong>D15 (user, 2026-11-25; plan finding 1). <code>--accept-failures</code> stays strict.</strong> It maps only a final <code>3</code> to <code>0</code>. D14's exit <code>5</code> for an excluded unreadable store stays <code>5</code>, and the waiter's line names the excluded stores and says to fix or remove them (PA4).</li>
+<li><strong>D15 (user, 2026-11-25; plan finding 1). <code>--accept-failures</code> stays strict.</strong> It maps only a final <code>3</code> to <code>0</code>. D14's exit <code>5</code> for an excluded unreadable store stays <code>5</code>, and the waiter's line names the excluded stores and says to fix or remove them (PA4). <em>The names come from the per-image unprojectable-store predicate, never from a set difference (plan re-review R2-C1).</em></li>
 <li><strong>D16 (user, 2026-11-25; plan review Q1). An all-failed run is <code>complete_with_failures</code></strong>, through the verdict's explicit no-proof arm (PA4 step 4). The waiter stays at <code>3</code>, Recent Runs reads "complete · N failed", and the GUI can relaunch it with <code>--retry-failures</code> (D10).</li>
 <li><strong>D17 (user, 2026-11-25; plan review Q3). The local-CLI window is accepted and documented.</strong> D10 can let the GUI claim an output a local CLI process may be re-running, because nothing records local CLI liveness. R14 is corrected; the tutorial and docs say not to run the same output from the CLI and the GUI at once (PA7, PA8, PA11).</li>
 <li><strong>D18 (user, 2026-11-25; plan review Q4). The error-analysis TSV is deferred</strong> to the follow-up issue (§8). <code>error_analysis.csv</code> stays, and <code>"error_analysis"</code> stays in <code>_KEPT_CSV_STEMS</code>; only <code>measurements</code> leaves it (PA5, PA8).</li>
@@ -2120,7 +2125,42 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 <tr class="even">
 <td><strong>Plan finding 1</strong> <code>--accept-failures</code> and exit 5</td>
-<td>D15: strict; the line names the excluded stores (<code>excluded_work_ids</code>, §9 call 25)</td>
+<td>D15: strict; the line names the excluded stores (§9 call 26)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Plan re-review of revision 2</strong> (<code>plan-review.md</code>, "Re-review of revision 2"), the findings that changed the spec:</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Finding</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>R2-C1</strong> <code>excluded_work_ids</code> measured a gap</td>
+<td>Dropped. PA4: <code>excluded_store_names(images)</code> from the per-image stage facts, shared with <code>_advisories</code>; otherwise the gap wording. §9 call 25 withdrawn, call 26</td>
+</tr>
+<tr class="even">
+<td><strong>R2-I1</strong> The pinned <code>RunState</code> field set</td>
+<td>PA4: the field-set test and the <code>tracked_state.md</code> table change deliberately</td>
+</tr>
+<tr class="odd">
+<td><strong>R2-I2</strong> The no-proof arm</td>
+<td>PA4 step 4: the marker tested by path; no master or mirror Parquet from another generation; the killed-retry sentence corrected; PA11's N7 paragraph and PA7's tutorial line follow</td>
+</tr>
+<tr class="even">
+<td><strong>R2-I4</strong> The waiter keeps no <code>RunState</code></td>
+<td>PA4: <code>RunSnapshot</code> carries the names from the same pass</td>
+</tr>
+<tr class="odd">
+<td><strong>R2-M4</strong> A cancelled all-failed run read two ways</td>
+<td>PA4 step 4: a fence must be finalizer-closed; <code>FENCE_CLOSED_BY_FINALIZER</code> moves to sdk_</td>
+</tr>
+<tr class="even">
+<td><strong>R2-M5</strong> "under <code>commit_guard</code>"</td>
+<td>PA8: "when one is given"</td>
 </tr>
 </tbody>
 </table></div>

@@ -607,11 +607,30 @@ judges the state it already resolved, at its own depth:
      configuration and the input (`_cli/_cli_failure_tracker.py:276, 507`), so a changed
      configuration or input set leaves an image unresolved rather than failed, and step 2
      already refuses that;
-   - `completion == "failed"` (step 1), so no liveness authority claims the run; a run killed
-     mid-image leaves that image unresolved;
-   - **no aggregate publication marker exists at all.** A marker beside zero verified images
-     means verified images were lost after a publication (a restart that cleared success
-     records), which is not a finished run.
+   - `completion == "failed"` (step 1), so no liveness authority claims the run. A first run
+     killed mid-image leaves that image unresolved. A killed `--retry-failures` relaunch that
+     verified nothing leaves every earlier failure row in the append-only journal
+     (`_run_state.py:995-996`), so the run reads confirmed again, unchanged; that is benign, and
+     it stays claimable (PA11, N7);
+   - **no aggregate publication marker file exists**, tested by path:
+     `aggregate_publication_marker_path(output_dir).exists()` is false. Never through
+     `_valid_aggregate_proof`, which returns `None` alike for an absent, wrong-version, empty or
+     tampered marker (`_run_state.py:1350-1377`; plan re-review R2-I2). A marker of any kind
+     beside zero verified images is not a finished all-failed run;
+   - **no deliverable from another generation:** neither `master_measurements.parquet` nor
+     `measurements.parquet` exists under `deliverables/`. An all-failed finalize writes no
+     deliverable: locally it returns before writing ("No valid measurements found",
+     `_cli_finalize_run.py:883-885`), and a SLURM finalizer logs and closes the lifecycle
+     terminal-incomplete (`_cli_checkpoint_handler.py:317-331`). So either file beside zero
+     verified images was left by an earlier generation: `--restart` clears `.phenotypic/`,
+     journal and marker included, but keeps `deliverables/` (`phenotypicCLI.py:3493-3500`).
+     Such a tree reads `failed`, not finished, and is re-run from the CLI or with `--overwrite`;
+   - **a fence, when one exists, was closed by its finalizer:** if `slurm_lifecycle_path(output_dir)`
+     exists, it is inactive, `closed_by == "finalizer"`, and has no `terminal_status`. A
+     cancelled all-failed SLURM run therefore reads `failed` here as it does in the observer,
+     instead of flipping to `complete_with_failures` at the next GUI restart (plan re-review
+     R2-M4). `FENCE_CLOSED_BY_FINALIZER` moves to `sdk_/_io_constants.py`, and
+     `_cli/_cli_slurm_lifecycle.py:47` re-exports it, so sdk_ need not import `_cli`.
 
    No finalization input is compared: nothing was published, so nothing can be stale. N is
    the number of accepted images.
@@ -631,7 +650,12 @@ config read (`_read_state_config`, `:134`):
   `accepted_finalization_digests(config)` (`:1436`);
 - `process_only_layer: str | None = None`.
 
-The defaults keep every existing `RunState(...)` construction valid. **[call]** This is
+The defaults keep every existing `RunState(...)` construction valid. Two pinned surfaces change
+deliberately (plan re-review R2-I1): `test_the_demoted_sources_live_only_under_diagnostics`
+asserts `RunState`'s exact field set (`tests/unit/sdk_/test_run_state.py:56-75`), and
+`docs/source/contrib_guide/tracked_state.md:43-53` tables the fields. Both gain the two names,
+with a docstring line saying they are configuration the resolver already read, not demoted
+evidence. **[call]** This is
 chosen over re-reading `processing_state.json` inside the verdict and comparing identity
 digests: with one read the verdict can never describe a different instant from the caller's
 state, which is the point of N1. The verdict's one read is the aggregate proof itself, whose
@@ -658,7 +682,8 @@ arms call both, so they cannot drift. **[call]**
     passes its **fresh** and its **verified deep** states (`_mutation_guard.py:136-177`), so
     the verdict and the identity digest it is compared beside describe the same instant.
 - **The waiter.** `_run_snapshot` (`_cli_wait.py:116-130`) computes the verdict in its single
-  pass, and `RunSnapshot` gains `finished_with_failures: int | None`, so "the verdict and the
+  pass, and `RunSnapshot` gains `finished_with_failures: int | None` and
+  `excluded_stores: tuple[str, ...]` (R2-I4), so "the verdict and the
   counts describe the same instant" still holds. `decide_wait_outcome` (`:309-366`) takes it as
   a **value** and stays a pure function (`tests/unit/cli/test_cli_wait.py:3-8`). Rule 3 becomes
   "`published` for this generation, and `finished_with_failures` is not `None`". Rule 4
@@ -677,16 +702,26 @@ arms call both, so they cannot drift. **[call]**
     `execution_epoch` is the generation; with no generation, a marker exists) and the verdict
     is `None`. It is never printed on `generation is None` alone, and never for an all-failed
     run, which D16 keeps at `3` (plan review C1).
-    - **When the proof lists excluded stores (D15).** `publish_aggregate_snapshot`
-      (`_cli_completion.py:1120`) records `excluded_work_ids`: the currently verified images
-      its `source_work_ids` leave out, sorted. It is an additive marker field with no version
-      bump, and `.phenotypic/` is exempt from byte stability (#281 C11). The line names each
-      image as `<dataset>/<image>` from `state.images`: "phenotypic-wait: the published outputs
-      leave out <list>, because the finalizer could not project their stores (its log under
-      <logs> says why). Fix or remove those stores, then re-run the same command." **[call]**
-    - **Otherwise:** "phenotypic-wait: this submission published, but its published outputs no
-      longer cover the run (the metadata, pipeline or input set changed after it published).
-      Re-run the same command."
+    - **When a store is demonstrably unprojectable (D15).** The names come from the per-image
+      stage facts `_advisories` already uses, never from a set difference: a verified image
+      whose record authorizes an embedded table (`declares_measurements is True`) but whose
+      store declares no column list to project it onto (`projectable_measurements is False`)
+      (`_run_state.py:965-975, 1680-1695`). That predicate becomes one exported sdk_ helper,
+      `excluded_store_names(images: Mapping[str, ImageState]) -> tuple[str, ...]`, which
+      `_advisories` and the waiter both call. The waiter computes it in `_run_snapshot`'s one
+      pass and carries it on `RunSnapshot` (plan re-review R2-I4). The line: "phenotypic-wait:
+      the published outputs leave out <list>, because their stores declare no table the
+      finalizer can project (its log under <logs> says why). Fix those stores by re-measuring
+      them, or remove them from the input, then re-run the same command." **[call]**
+    - **Otherwise, the gap wording, which names no cause:** "phenotypic-wait: this submission
+      published, but its published outputs no longer cover the run: images verified after it
+      published, or the metadata, pipeline or input set changed. Re-run the same command."
+      A rolling input reaches this with nothing wrong, so no store is named
+      (`test_a_master_that_merely_predates_an_image_claims_no_exclusion`,
+      `tests/unit/sdk_/test_run_state.py:1351`, stays green).
+    - **No marker field is added** (plan re-review R2-C1): a field derived as "verified minus
+      `source_work_ids`" measures that gap, not an exclusion, and would name valid stores
+      (`_cli_completion.py:1132-1150`, `_cli_finalize_fanout.py:700-706`).
     - `--accept-failures` still maps only a final `3` to `0` (D15).
 
   It changes what #281's exit `3` promises in one edge case; D14 adopts it.
@@ -920,8 +955,9 @@ The other tune surfaces move to §8, to be fixed when `/tune/` is re-mounted.
   - **`docs/source/tutorials/gui/04_run_local.md` and `05_run_slurm.md`:**
     - one paragraph on `complete · N failed`: how it differs from `failed`, that the failed
       images have no rows, and that the output can be relaunched with `--retry-failures`
-      (PA11). If that relaunch is killed before it finalizes, the GUI refuses the output, and
-      it is resumed by re-running the same command from the CLI (N7). Never re-run the same
+      (PA11). If that relaunch is killed before it finalizes having verified at least one
+      image, the GUI refuses the output, and it is resumed by re-running the same command from
+      the CLI (N7); one that verified nothing leaves the output as it was, still relaunchable. Never re-run the same
       output from the CLI and the GUI at once: nothing records a local CLI run's liveness, so
       the GUI cannot see it (D17);
   - **`06_view_results.md`:**
@@ -950,7 +986,7 @@ shared finalize path). The CSV is kept only because GUI curation rewrote it (#28
 
 | Site | Today | PR A |
 |---|---|---|
-| `_cli_output_manager.py:968-1003` `_seed_measurements` | writes `.tsv`, `.csv`, `.parquet`, each through `_guarded_terminal_best_effort` (`:99-115`), which swallows errors | writes `.tsv` and `.parquet`. The old CSV is retired by `remove_stale_csv_sibling(measurements_tsv_path(output_dir))` only if both hold: (1) the TSV write **succeeded**, a fact the plan must carry out of the best-effort wrapper; (2) the unlink runs **under `commit_guard`**. Unlike the unguarded sweeps at `:838` and `:1502` (review Minor 10). The docstring (`:975-983`) stops citing B9 |
+| `_cli_output_manager.py:968-1003` `_seed_measurements` | writes `.tsv`, `.csv`, `.parquet`, each through `_guarded_terminal_best_effort` (`:99-115`), which swallows errors | writes `.tsv` and `.parquet`. The old CSV is retired by `remove_stale_csv_sibling(measurements_tsv_path(output_dir))` only if both hold: (1) the TSV write **succeeded**, a fact the plan must carry out of the best-effort wrapper; (2) the unlink runs **under `commit_guard` when one is given**; with `commit_guard=None` (which `_guarded_terminal_call`, `:90-97`, allows) it runs unguarded, still after the TSV, like the sweeps at `:838` and `:1502` (review Minor 10; plan re-review R2-M5). The docstring (`:975-983`) stops citing B9 |
 | `_cli_completion.py:1205-1210` `required_paths` | records `measurements_csv` | drops `measurements_csv`. The proof records `master_parquet`, `measurements_tsv` and `measurements_parquet`, plus `metrics_json` and `schema_json` (`:1215-1220`). The comment at `:1183-1203` is updated |
 | `_cli_interactive.py:257, 274-279` dry-run inventory | names `measurements.csv` "for the results viewer" | names only the TSV and Parquet |
 | `_cli_readme_generator.py:116, 147-150` README tree and paragraph | lists `measurements.csv` "kept until #283", and names `error_analysis.csv` (`:147`) | removed; `error_analysis.csv` stays (D18); one sentence says older runs had a `measurements.csv` |
@@ -1198,10 +1234,14 @@ docstring's "Fires when" list (`:1418-1423`) says so.
 | `completion == "failed"` that the verdict does **not** confirm | `:1469-1474` | An unfinished run: an unresolved image, no aggregate proof although an image verified, an aggregate marker beside zero verified images, or a publication that no longer covers the run (C1, D16). Its state is mid-way, and a new launch would mix with it |
 | `completion == "incomplete"` | `:1475-1479` | Accepted work that never verified, or was never published over |
 
-**A killed relaunch can only be resumed from the CLI (N7).** Suppose a GUI-launched
-`--retry-failures` (or plain Run) relaunch on a confirmed output is killed before it
-finalizes. The output is then an unconfirmed `failed` run, and this gate refuses it, as D10's
-"still refuses … unfinished" requires. The GUI's own relaunch is what strands the user on the
+**A killed relaunch can only be resumed from the CLI (N7), if it verified something.**
+Suppose a GUI-launched `--retry-failures` (or plain Run) relaunch on a confirmed output is
+killed before it finalizes. If it verified at least one image, the source set no longer matches
+the proof (or, for an all-failed run, an image is now verified with no proof), so the output is
+an unconfirmed `failed` run, and this gate refuses it, as D10's "still refuses … unfinished"
+requires. If it verified nothing, every earlier failure row is still in the journal and the
+proof (if any) still covers the run, so the output reads confirmed again, unchanged, and stays
+claimable (plan re-review R2-I2). The GUI's own relaunch is what strands the user on the
 CLI, so the refusal message and the tutorial (PA7) both say to re-run the same command from
 the CLI.
 
@@ -1821,8 +1861,10 @@ FEATURES row:
     `resolve_run_state`'s one config read, so the verdict needs no second read (PA4).
 24. **The verdict's comparisons are two shared helpers**, `_identity_digests_match` and
     `_source_set_matches`, so rule 1 can call them with its own binding (PA4).
-25. **The aggregate proof records `excluded_work_ids`**, so the exit-5 line can name the
-    excluded stores (PA4, D15).
+25. *Withdrawn (plan re-review R2-C1): no `excluded_work_ids` field.*
+26. **`excluded_store_names(images)` is one sdk_ helper** shared by `_advisories` and the waiter,
+    and the waiter carries its result on `RunSnapshot` (PA4, D15).
+27. **The no-proof arm refuses stale deliverables and a non-finalizer fence** (PA4 step 4).
 
 ---
 
@@ -1871,7 +1913,8 @@ These settle the first draft's eight questions, the merge-order question (D9), t
   line a variant; PA8 lists the docs that describe exit 5.*
 - **D15 (user, 2026-11-25; plan finding 1). `--accept-failures` stays strict.** It maps only a
   final `3` to `0`. D14's exit `5` for an excluded unreadable store stays `5`, and the waiter's
-  line names the excluded stores and says to fix or remove them (PA4).
+  line names the excluded stores and says to fix or remove them (PA4). *The names come from the
+  per-image unprojectable-store predicate, never from a set difference (plan re-review R2-C1).*
 - **D16 (user, 2026-11-25; plan review Q1). An all-failed run is `complete_with_failures`**,
   through the verdict's explicit no-proof arm (PA4 step 4). The waiter stays at `3`, Recent
   Runs reads "complete · N failed", and the GUI can relaunch it with `--retry-failures` (D10).
@@ -1958,4 +2001,16 @@ changed the spec:
 | **I5** More consumers of the 0/3 result | PA1: `_SlurmCompletion.finished`, the banner, `shell/_app.py:215, 681` |
 | **I6** The error-analysis v2 early return | D18: deferred to §8, with I6's two extra sites recorded there |
 | **I12** R14 was wrong | D17: R14 corrected; PA11, PA7 and PA8 document the window |
-| **Plan finding 1** `--accept-failures` and exit 5 | D15: strict; the line names the excluded stores (`excluded_work_ids`, §9 call 25) |
+| **Plan finding 1** `--accept-failures` and exit 5 | D15: strict; the line names the excluded stores (§9 call 26) |
+
+**Plan re-review of revision 2** (`plan-review.md`, "Re-review of revision 2"), the findings
+that changed the spec:
+
+| Finding | Fix |
+|---|---|
+| **R2-C1** `excluded_work_ids` measured a gap | Dropped. PA4: `excluded_store_names(images)` from the per-image stage facts, shared with `_advisories`; otherwise the gap wording. §9 call 25 withdrawn, call 26 |
+| **R2-I1** The pinned `RunState` field set | PA4: the field-set test and the `tracked_state.md` table change deliberately |
+| **R2-I2** The no-proof arm | PA4 step 4: the marker tested by path; no master or mirror Parquet from another generation; the killed-retry sentence corrected; PA11's N7 paragraph and PA7's tutorial line follow |
+| **R2-I4** The waiter keeps no `RunState` | PA4: `RunSnapshot` carries the names from the same pass |
+| **R2-M4** A cancelled all-failed run read two ways | PA4 step 4: a fence must be finalizer-closed; `FENCE_CLOSED_BY_FINALIZER` moves to sdk_ |
+| **R2-M5** "under `commit_guard`" | PA8: "when one is given" |

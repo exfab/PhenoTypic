@@ -23,7 +23,10 @@ terminal in every case.
   `_reference_operation_paths_for` (`phenotypicCLI.py:739`) and
   `_refuse_measuring_reference_pipeline` (`:761-773`) into `_cli_reference.py`, which the CLI
   then imports; add `measure_reference_refusal` there. A run-console callback then never
-  imports the 4,800-line CLI module (Minor 13).
+  imports the 4,800-line CLI module (Minor 13). Before the move, `grep -rn
+  '_refuse_measuring_reference_pipeline\|_reference_operation_paths_for' tests/` on the rebased
+  #282 tree: today there is no monkeypatch target; leave a re-export in `phenotypicCLI.py` only
+  if one has appeared (R2-M6).
 - Test: `tests/unit/gui/run_console/test_state.py`, `tests/integration/gui/test_run_console_callbacks.py`,
   `tests/integration/cli/test_gui_measure_argv.py` (new).
 

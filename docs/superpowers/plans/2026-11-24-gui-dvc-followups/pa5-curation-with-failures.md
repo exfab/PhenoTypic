@@ -36,7 +36,8 @@ unchanged.
   - `authorize` calls it on the bound state, the fresh deep state and the verified deep state.
   - `OutputMutationReceipt` gains `failed_images: int | None`, recorded beside
     `run_identity_digest` [spec call 14]; a fresh verdict whose N differs from the bound one
-    refuses.
+    refuses with "… blocked: the failed image count changed from N to M after this snapshot
+    was bound. Refresh Results and Analysis."
   - `load_or_scan_processing_inventory`: `reusable` uses the same predicate.
 
 - [ ] **Step 1: Write the failing tests.**
@@ -49,11 +50,18 @@ def test_the_guard_authorizes_a_confirmed_run(tmp_path):
 
 def test_the_guard_refuses_an_unresolved_failed_run(tmp_path): ...        # drop_success_record
 def test_the_guard_refuses_a_stale_publication(tmp_path): ...             # bump_metadata_snapshot_digest
-def test_a_verdict_that_flips_between_bind_and_write_is_refused(tmp_path):
-    root = output_root_over(out := build_run_with_failures(tmp_path))
-    publish_image_success_for(out, "img-b")  # only the verdict flips: the source set moves,
-                                             # the identity digest and the processing products do not (I9)
+def test_a_verdict_that_flips_between_bind_and_write_is_refused(tmp_path):   # I9, R2-I3
+    root = output_root_over(out := build_run_with_failures(tmp_path, failed_stems=("b", "c")))
+    publish_image_success_for(out, "b")      # c still failed: completion STAYS "failed"; only the
+                                             # source set moves, so only the verdict flips
+    assert resolve_run_state(out, depth="deep").completion == "failed"
     with pytest.raises(OutputMutationBlocked, match="run state is failed"):
+        OutputMutationGuard(root, gen).authorize("curate", presented_generation=gen)
+
+def test_a_fresh_verdict_whose_n_differs_refuses(tmp_path, monkeypatch):   # spec call 14, R2-I3
+    root = output_root_over(build_run_with_failures(tmp_path, failed_stems=("b", "c")))   # bound N = 2
+    monkeypatch.setattr(guard_module, "run_finished_with_failures", lambda state, out: 1)  # fresh N = 1
+    with pytest.raises(OutputMutationBlocked, match="failed image count changed"):
         OutputMutationGuard(root, gen).authorize("curate", presented_generation=gen)
 
 def test_a_confirmed_run_gets_an_exhaustive_inventory(tmp_path):

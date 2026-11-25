@@ -9,6 +9,13 @@ and still read a v1 store; reds #8–13 are green.
 
 **Depends on:** nothing. Runs as **Lane V** beside PA1, in its own worktree.
 
+**Helpers stay local (R2-M1).** `add_second_measuring_run`, `add_grid_only_run`,
+`rewrite_latest_table_with_zero_rows`, `run_from_fixture` and `v1_pairs` are written in the two
+test modules that use them (`test_measurement_source.py`, `test_zarr_routes.py`), never in
+`tests/_output_layout.py`, which PA1 T1 edits on the main line. A module-local
+`add_grid_only_run` already exists in `tests/unit/sdk_/test_tables_v2_state_readers.py:29`; copy
+its approach, do not import across test modules.
+
 ### Task 1: `_store_and_identity` through `declared_measurement_table_path` (C5)
 
 **Files:**

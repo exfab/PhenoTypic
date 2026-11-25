@@ -15,42 +15,59 @@ submitter's exit by `RunExitCode`; `complete_with_failures` is a terminal status
 **Files:**
 - Modify: `src/phenotypic/sdk_/_state_types.py:155-166`: `RunState` gains
   `finalization_digests: frozenset[str] = frozenset()` and `process_only_layer: str | None = None`.
-- Modify: `src/phenotypic/sdk_/_run_state.py`: `resolve_run_state` (`:1848+`) fills both from
-  its one config read (`_read_state_config`, `:134`; `accepted_finalization_digests`, `:1436`);
-  add the verdict and the two shared helpers beside `_run_proof_covers_current_inventory`
-  (`:1464-1541`), which calls them.
-- Modify: `src/phenotypic/sdk_/__init__.py`: export `run_finished_with_failures` beside
-  `aggregate_proof_is_current` (`:455, 645`).
+- Modify: `src/phenotypic/sdk_/_run_state.py`:
+  - `resolve_run_state` (`:1848+`) fills both from its one config read (`_read_state_config`,
+    `:134`; `accepted_finalization_digests`, `:1436`);
+  - add the verdict and the two shared helpers beside `_run_proof_covers_current_inventory`
+    (`:1464-1541`), which calls them;
+  - factor the exclusion predicate out of `_advisories` (`:1680-1695`) into
+    `excluded_store_names`, which `_advisories` then calls (R2-C1).
+- Modify: `src/phenotypic/sdk_/_io_constants.py`: add `FENCE_CLOSED_BY_FINALIZER = "finalizer"`;
+  `src/phenotypic/_cli/_cli_slurm_lifecycle.py:47` imports it from sdk_ instead of defining it.
+- Modify: `src/phenotypic/sdk_/__init__.py`: export `run_finished_with_failures`,
+  `excluded_store_names`, `FENCE_CLOSED_BY_FINALIZER` beside `aggregate_proof_is_current`
+  (`:455, 645`).
+- Modify (pinned, deliberately; R2-I1): `tests/unit/sdk_/test_run_state.py:56-75`
+  (`test_the_demoted_sources_live_only_under_diagnostics`: the field set gains the two names,
+  and its docstring says they are configuration the resolver already read, not demoted
+  evidence); `docs/source/contrib_guide/tracked_state.md:43-53` (two rows).
 - Create (helpers), in `tests/_output_layout.py`:
-  `build_run_with_failures(tmp_path: Path, *, failed_stems: Sequence[str] = ("img-b",), unresolved_stems: Sequence[str] = (), omit_from_proof: Sequence[str] = (), process_only_layer: str | None = None) -> Path`.
-  Built with the real publishers, in `build_complete_run`'s order (`:448-528`):
-  - `write_processing_state` (`:288`) over every stem;
-  - `publish_image_success` (`_cli/_cli_completion.py:217`) for each **verified** stem (not in
-    `failed_stems` or `unresolved_stems`); `append_terminal_failure`
-    (`_cli/_cli_failure_tracker.py:562`) for each failed stem; nothing for an unresolved stem;
-  - when `process_only_layer` is set: **no** master, mirror or aggregate (as
-    `build_complete_run` does, `:503-517`);
-  - when no stem is verified: **no** aggregate (`publish_aggregate_snapshot` refuses zero
-    successes, `_cli_completion.py:1179-1181`);
-  - otherwise the master and mirror over the verified stems **minus `omit_from_proof`**, then
-    `publish_aggregate_snapshot(source_work_ids=<the same set>)`. An omitted stem is absent
-    from the master, the mirror and the proof, as a real exclusion leaves it.
-  - It uses `write_measurements_mirror`'s default, so it works before and after PA3 T2 flips
-    that default.
+  - `authorize_measurements(root: Path, stem: str, *, projectable: bool = True) -> None`:
+    moved from `tests/unit/sdk_/test_run_state.py`'s module-local `_authorize_measurements`
+    (used by `_build_excluded_store_run`, `:654-690`), which then imports it.
+  - `build_run_with_failures(tmp_path: Path, *, failed_stems: Sequence[str] = ("b",), unresolved_stems: Sequence[str] = (), unprojectable_stems: Sequence[str] = (), late_stems: Sequence[str] = (), process_only_layer: str | None = None) -> Path`.
+    - **Stems (R2-M2):** the inventory is `FIXTURE_STEMS` (`("a", "b")`, `:191`) ∪ every
+      named stem, in one dataset, `FIXTURE_DATASET` (`"plate"`, `:190`). A store is named
+      `plate/<stem>`.
+    - `write_processing_state` (`:288`) over every stem; `append_terminal_failure`
+      (`_cli/_cli_failure_tracker.py:562`) for each failed stem; nothing for an unresolved stem.
+    - Every other stem is **verified** (`publish_image_success`, `_cli_completion.py:217`).
+      An **unprojectable** stem is verified through `authorize_measurements(projectable=False)`:
+      its record authorizes a table its store declares no column list for, as a real exclusion
+      leaves it (R2-C1). A **late** stem is verified and projectable, but published after the
+      proof: the rolling-input gap.
+    - With `process_only_layer`: no master, mirror or aggregate (as `build_complete_run`,
+      `:503-517`). With no verified stem: no aggregate (`_cli_completion.py:1179-1181`).
+    - Otherwise the master, the mirror and `publish_aggregate_snapshot(source_work_ids=...)`
+      over the verified stems **minus** unprojectable and late stems.
+    - It uses `write_measurements_mirror`'s default, so it works before and after PA3 T2.
 - Test: `tests/unit/sdk_/test_run_finished_with_failures.py` (new, shared env)
 
 **Interfaces:**
 - Consumes: `resolve_run_state(output_dir, depth=...) -> RunState`; `_valid_aggregate_proof`
-  (`:1397`); `_source_set_binding` (`:1542`); `canonical_digest` (`sdk_/_digests.py:46`);
-  `RunState.images[work_id].verdict`, `.identity`.
+  (`:1397`); `_source_set_binding` (`:1542`); `aggregate_publication_marker_path`,
+  `master_measurements_parquet_path`, `measurements_parquet_path`, `slurm_lifecycle_path`;
+  `canonical_digest` (`sdk_/_digests.py:46`); `RunState.images[work_id].verdict`, `.identity`.
 - Produces:
   - `run_finished_with_failures(state: RunState, output_dir: Path) -> int | None`: spec PA4
-    steps 1–5. Its only disk read is the aggregate proof (`_valid_aggregate_proof`, which also
-    tells the no-proof arm whether a marker exists). It never reads `processing_state.json`.
-  - `_identity_digests_match(proof: Mapping[str, object], identity: RunIdentity) -> bool`:
-    inventory and scientific digests.
-  - `_source_set_matches(binding: Mapping[str, object], verified: Sequence[str]) -> bool`:
-    `source_set_digest` and `source_image_count`.
+    steps 1–5. Its disk reads are the aggregate proof, and, in the no-proof arm only, three
+    existence checks (the marker path, the two Parquet deliverables) and the lifecycle file. It
+    never reads `processing_state.json`.
+  - `_identity_digests_match(proof: Mapping[str, object], identity: RunIdentity) -> bool`;
+    `_source_set_matches(binding: Mapping[str, object], verified: Sequence[str]) -> bool`.
+  - `excluded_store_names(images: Mapping[str, ImageState]) -> tuple[str, ...]`: sorted
+    `"<dataset>/<image_stem>"` of verified images with `declares_measurements is True` and
+    `projectable_measurements is False`. `_advisories`' wording is unchanged.
   - `RunState.finalization_digests`, `RunState.process_only_layer`.
 
 - [ ] **Step 1: Write the failing tests.**
@@ -59,69 +76,91 @@ submitter's exit by `RunExitCode`; `complete_with_failures` is a terminal status
 def _state(out): return resolve_run_state(out, depth="deep")
 
 def test_a_finished_run_with_failures_returns_n(tmp_path):
-    out = build_run_with_failures(tmp_path)
+    out = build_run_with_failures(tmp_path)                       # a verified, b failed
     assert run_finished_with_failures(_state(out), out) == 1
 
-def test_an_unresolved_image_beside_a_current_proof_returns_none(tmp_path):     # C2: isolates step 2
-    out = build_run_with_failures(tmp_path, failed_stems=("img-b",), unresolved_stems=("img-c",))
+def test_a_live_run_returns_none(tmp_path):                       # step 1
+    out = build_run_with_failures(tmp_path); hold_active_fence(out)
+    assert _state(out).completion == "active" and run_finished_with_failures(_state(out), out) is None
+
+def test_an_unresolved_image_beside_a_current_proof_returns_none(tmp_path):     # step 2
+    out = build_run_with_failures(tmp_path, unresolved_stems=("c",))
     assert run_finished_with_failures(_state(out), out) is None
 
 def test_no_aggregate_proof_with_a_verified_image_returns_none(tmp_path):
+    out = build_run_with_failures(tmp_path); aggregate_publication_marker_path(out).unlink()
+    assert run_finished_with_failures(_state(out), out) is None
+
+def test_a_retry_that_verified_one_image_returns_none(tmp_path):  # source set (R2-I3 label)
+    out = build_run_with_failures(tmp_path, failed_stems=("b", "c"))
+    publish_image_success_for(out, "b")                           # c still failed
+    assert _state(out).completion == "failed"                     # so step 1 does not kill it
+    assert run_finished_with_failures(_state(out), out) is None
+
+def test_a_killed_retry_that_verified_nothing_stays_confirmed(tmp_path):   # R2-I2, N7
     out = build_run_with_failures(tmp_path)
-    aggregate_publication_marker_path(out).unlink()
+    append_retry_attempt_without_result(out, "b")                 # the journal row stays
+    assert run_finished_with_failures(_state(out), out) == 1
+
+def test_a_killed_metadata_change_returns_none(tmp_path):         # finalization digest
+    out = build_run_with_failures(tmp_path); bump_metadata_snapshot_digest(out)   # :769
     assert run_finished_with_failures(_state(out), out) is None
 
-def test_a_killed_retry_continuation_returns_none(tmp_path):                   # source set
-    out = build_run_with_failures(tmp_path)
-    publish_image_success_for(out, "img-b")       # a success outranks the failure (_run_state.py:986-996)
+def test_an_edited_pipeline_returns_none(tmp_path):               # scientific digest
+    out = build_run_with_failures(tmp_path); bump_scientific_config_digest(out)   # :360
     assert run_finished_with_failures(_state(out), out) is None
 
-def test_a_killed_metadata_change_returns_none(tmp_path):                      # finalization digest
-    out = build_run_with_failures(tmp_path)
-    bump_metadata_snapshot_digest(out)            # tests/_output_layout.py:769
+def test_a_new_image_that_failed_returns_none(tmp_path):          # inventory digest
+    out = build_run_with_failures(tmp_path); accept_and_fail(out, "c")
     assert run_finished_with_failures(_state(out), out) is None
 
-def test_an_edited_pipeline_returns_none(tmp_path):                            # scientific digest
-    out = build_run_with_failures(tmp_path)
-    bump_scientific_config_digest(out)            # :360
-    assert run_finished_with_failures(_state(out), out) is None
+def test_an_unprojectable_store_returns_none_and_is_named(tmp_path):      # R2-C1
+    out = build_run_with_failures(tmp_path, unprojectable_stems=("c",))
+    state = _state(out)
+    assert run_finished_with_failures(state, out) is None
+    assert excluded_store_names(state.images) == ("plate/c",)
 
-def test_a_new_image_that_failed_returns_none(tmp_path):                       # C2: isolates inventory
-    out = build_run_with_failures(tmp_path)
-    accept_and_fail(out, "img-c")                 # inventory moves, every image resolved, proof older
-    assert run_finished_with_failures(_state(out), out) is None
+def test_a_late_image_returns_none_and_names_no_store(tmp_path):         # rolling input
+    out = build_run_with_failures(tmp_path, late_stems=("c",))
+    state = _state(out)
+    assert run_finished_with_failures(state, out) is None
+    assert excluded_store_names(state.images) == ()
 
-def test_an_excluded_store_returns_none(tmp_path):                             # N3
-    out = build_run_with_failures(tmp_path, omit_from_proof=("img-a",))
-    assert run_finished_with_failures(_state(out), out) is None
-
-def test_a_process_run_returns_none(tmp_path):                                 # N4
+def test_a_process_run_returns_none(tmp_path):                    # N4
     out = build_run_with_failures(tmp_path, process_only_layer="gray")
     assert run_finished_with_failures(_state(out), out) is None
 
-def test_a_live_run_returns_none(tmp_path):                                   # step 1
-    out = build_run_with_failures(tmp_path); hold_active_fence(out)       # initialize_slurm_lifecycle
-    assert _state(out).completion == "active"
-    assert run_finished_with_failures(_state(out), out) is None
-
 def test_a_curated_mirror_does_not_move_the_verdict(tmp_path):
-    out = build_run_with_failures(tmp_path)
-    rewrite_mirror_rows(out)                      # curation-shaped: .parquet and .tsv/.csv only
+    out = build_run_with_failures(tmp_path); rewrite_mirror_rows(out)
     assert run_finished_with_failures(_state(out), out) == 1
 
-def test_an_all_failed_run_is_finished_with_failures(tmp_path):                # D16, Review Focus 1
-    out = build_run_with_failures(tmp_path, failed_stems=("img-a", "img-b"))
-    assert not aggregate_publication_marker_path(out).exists()
+def test_an_all_failed_run_is_finished_with_failures(tmp_path):   # D16, Review Focus 1
+    out = build_run_with_failures(tmp_path, failed_stems=("a", "b"))
     assert run_finished_with_failures(_state(out), out) == 2
 
-def test_an_all_failed_run_with_a_stray_marker_returns_none(tmp_path):         # D16 arm, marker check
-    out = build_run_with_failures(tmp_path)       # img-a verified, proof published
-    drop_success_record(out, "img-a"); fail_image(out, "img-a")   # verified image lost, now failed
-    assert aggregate_publication_marker_path(out).exists()
+@pytest.mark.parametrize("marker", ["valid", "wrong_version", "empty_outputs"])    # R2-I2: by path
+def test_an_all_failed_run_beside_any_marker_returns_none(tmp_path, marker):
+    out = build_run_with_failures(tmp_path, failed_stems=("a", "b"))
+    write_marker(out, kind=marker)                                # _valid_aggregate_proof is None for two of these
     assert run_finished_with_failures(_state(out), out) is None
 
-def test_an_all_failed_run_with_an_unresolved_image_returns_none(tmp_path):    # D16 arm, step 2
-    out = build_run_with_failures(tmp_path, failed_stems=("img-a",), unresolved_stems=("img-b",))
+def test_an_all_failed_restart_beside_an_old_master_returns_none(tmp_path):    # R2-I2: another generation
+    out = build_run_with_failures(tmp_path)                       # a once-published tree
+    restart_and_fail_everything(out)                              # clears .phenotypic/, keeps deliverables/
+    assert master_measurements_parquet_path(out).exists()
+    assert run_finished_with_failures(_state(out), out) is None
+
+def test_an_all_failed_restart_with_no_deliverables_is_confirmed(tmp_path):
+    out = build_run_with_failures(tmp_path); restart_and_fail_everything(out, clear_deliverables=True)
+    assert run_finished_with_failures(_state(out), out) == 2
+
+@pytest.mark.parametrize("fence,expected", [("finalizer", 2), ("cancelled", None), ("finalizer_failed", None)])
+def test_an_all_failed_run_reads_its_fence(tmp_path, fence, expected):    # R2-M4
+    out = build_run_with_failures(tmp_path, failed_stems=("a", "b")); close_fence(out, how=fence)
+    assert run_finished_with_failures(_state(out), out) == expected
+
+def test_an_all_failed_run_with_an_unresolved_image_returns_none(tmp_path):
+    out = build_run_with_failures(tmp_path, failed_stems=("a",), unresolved_stems=("b",))
     assert run_finished_with_failures(_state(out), out) is None
 
 def test_the_verdict_reads_neither_state_nor_config(monkeypatch, tmp_path):    # N1, I1
@@ -138,36 +177,51 @@ def test_rule_one_still_proves_a_complete_run(tmp_path):
     assert _state(build_complete_run(tmp_path)).completion == "complete"
 ```
 
-The small helpers (`hold_active_fence`, `drop_success_record`, `publish_image_success_for`, `accept_and_fail`,
-`fail_image`, `rewrite_mirror_rows`, `read_config`, `_explode`) live in the test module, each
-a call to a real writer or an `unlink`. None hand-edits the failure journal (append-only).
+The small helpers (`hold_active_fence`, `publish_image_success_for`,
+`append_retry_attempt_without_result`, `accept_and_fail`, `rewrite_mirror_rows`, `write_marker`,
+`restart_and_fail_everything`, `close_fence`, `read_config`, `_explode`) live in the test
+module, each a call to a real writer (`initialize_slurm_lifecycle`, `cancel_generation`,
+`mark_generation_failed`, the `--restart` clearing function) or an `unlink`. `write_marker`'s two
+invalid kinds are the one hand-edit, because no writer produces an invalid marker; the test says
+so. None edits the failure journal by hand.
+
+`test_a_master_that_merely_predates_an_image_claims_no_exclusion`
+(`tests/unit/sdk_/test_run_state.py:1351`) and
+`test_a_store_the_master_excluded_is_named_and_the_run_stays_incomplete` (`:1272`) must stay
+green unedited: they pin `excluded_store_names`' two answers through `_advisories`.
 - [ ] **Step 2: Run them; every verdict test fails with `ImportError`.**
   `$PT tests/unit/sdk_/test_run_finished_with_failures.py`
-- [ ] **Step 3: Implement** the two `RunState` fields, the two helpers, the verdict, and route
-  `_run_proof_covers_current_inventory` through the helpers (its process branch and
-  `_source_set_binding` unchanged).
-- [ ] **Step 4: Run the new file plus `tests/unit/sdk_/test_run_state.py` and
-  `test_run_state_layering.py`; all pass.**
+- [ ] **Step 3: Implement** the two `RunState` fields, the two helpers, `excluded_store_names`,
+  the constant move, the verdict; route `_run_proof_covers_current_inventory` through the
+  helpers (its process branch and `_source_set_binding` unchanged).
+- [ ] **Step 4: Run the new file plus `tests/unit/sdk_/test_run_state.py` (with the deliberate
+  field-set edit) and `test_run_state_layering.py`; all pass.**
 - [ ] **Step 5: Mutation check, by deletion** (plan review C2). Delete one conjunct at a time;
   each must fail the named test:
 
   | Deleted conjunct | Must fail |
   |---|---|
-  | step 1 (`completion == "failed"`) | a live-fence case added here: `test_a_live_run_returns_none` |
+  | step 1 (`completion == "failed"`) | `test_a_live_run_returns_none` |
   | step 2 (no unresolved image) | `test_an_unresolved_image_beside_a_current_proof_returns_none` |
   | step 3 proof present | `test_no_aggregate_proof_with_a_verified_image_returns_none` |
   | inventory digest | `test_a_new_image_that_failed_returns_none` |
   | scientific digest | `test_an_edited_pipeline_returns_none` |
   | finalization digest | `test_a_killed_metadata_change_returns_none` |
-  | source-set digest **and** count | `test_a_killed_retry_continuation_returns_none`, `test_an_excluded_store_returns_none` |
-  | step 4 no-marker check | `test_an_all_failed_run_with_a_stray_marker_returns_none` |
+  | source-set digest **and** count | `test_a_retry_that_verified_one_image_returns_none`, `test_an_unprojectable_store_returns_none_and_is_named`, `test_a_late_image_returns_none_and_names_no_store` |
+  | step 4 marker-by-path | `test_an_all_failed_run_beside_any_marker_returns_none[valid]`, `[wrong_version]`, `[empty_outputs]` |
+  | step 4 marker check rewritten through `_valid_aggregate_proof` | `[wrong_version]`, `[empty_outputs]` (the review's "absent vs invalid" mutant) |
+  | step 4 no other-generation deliverable | `test_an_all_failed_restart_beside_an_old_master_returns_none` |
+  | step 4 finalizer-closed fence | `test_an_all_failed_run_reads_its_fence[cancelled]`, `[finalizer_failed]` |
   | step 5 (process) | `test_a_process_run_returns_none` |
+  | `excluded_store_names`' `projectable is False` clause | `test_a_late_image_returns_none_and_names_no_store`, `test_a_master_that_merely_predates_an_image_claims_no_exclusion` |
 
   `source_image_count` cannot be isolated from `source_set_digest` (both move with the verified
   set); the table says so rather than claiming separate coverage. Each mutant of the two shared
-  helpers must also fail a rule-1 test in `test_run_state.py`. Back up by full path, restore from
-  the saved bytes, hash-check; record the table, with each result, in the cluster report.
-- [ ] **Step 6: Commit** the four source files and the two test files.
+  helpers must also fail a rule-1 test (`test_each_of_rule_ones_comparisons_is_load_bearing`,
+  `test_run_state.py:1034`; `test_clause_one_is_load_bearing`, `:953`). Back up by full path,
+  restore from the saved bytes, hash-check; record the table, with each result, in the cluster
+  report.
+- [ ] **Step 6: Commit** the source files, the moved helper, and the test files.
 
 ### Task 2: the waiter composes the verdict (C1, D14, N3)
 
@@ -176,31 +230,29 @@ a call to a real writer or an `unlink`. None hand-edits the failure journal (app
   (`:116-130`), `decide_wait_outcome` (`:309-366`), `_unpublished_line` (`:404-424`); add
   `finished_run_outcome`.
 - Modify: `src/phenotypic/sdk_/_exit_codes.py:29-30` docstring (ENDED_UNPUBLISHED).
-- Modify: `src/phenotypic/_cli/_cli_completion.py:1120-1265` (`publish_aggregate_snapshot`):
-  the marker gains `excluded_work_ids` (D15).
-- Test: `tests/unit/cli/test_cli_wait.py`, `tests/unit/cli/test_cli_completion.py`
+- No change to `publish_aggregate_snapshot` (R2-C1: no marker field).
+- Test: `tests/unit/cli/test_cli_wait.py`
 
 **Interfaces:**
 - Consumes: Task 1's `run_finished_with_failures`.
 - Produces:
-  - `RunSnapshot.finished_with_failures: int | None = None`, computed in `_run_snapshot`'s
-    one `resolve_run_state` pass.
+  - `RunSnapshot.finished_with_failures: int | None = None` and
+    `RunSnapshot.excluded_stores: tuple[str, ...] = ()`, both computed in `_run_snapshot`'s one
+    `resolve_run_state` pass (`excluded_store_names(state.images)`, Task 1; R2-I4).
   - `decide_wait_outcome(..., finished_with_failures: int | None = None) -> RunExitCode | None`:
     still pure. Rule 3 requires `published and finished_with_failures is not None`; rule 4
     (process) unchanged.
   - `finished_run_outcome(output_dir: Path, generation: str | None) -> RunExitCode | None`:
     `decide_wait_outcome` over one `_run_snapshot` and the other seams, with `live` empty.
     Only the SLURM observer calls it (Task 5).
-  - `publish_aggregate_snapshot(...)`: same signature; the marker gains
-    `"excluded_work_ids": sorted(<currently verified work ids> - set(source_work_ids))`, the
-    verified set read by `_current_success_work_ids` (`_cli_completion.py:831`). No version bump.
   - `_proof_published_by(output_dir: Path, generation: str | None) -> Mapping[str, object] | None`:
     the aggregate marker when its `execution_epoch` is `generation` (with `None`, any marker),
     else `None`.
-  - `_unpublished_line(output_dir, *, cancelled: bool, published_proof: Mapping[str, object] | None, state: RunState) -> str`:
-    with no `published_proof`, today's line. With one: when `excluded_work_ids` is non-empty,
-    spec PA4's D15 line naming each as `<dataset>/<image>` from `state.images`; otherwise the
-    "no longer cover the run" line. `<logs>` is `slurm_logs_dir(output_dir)`.
+  - `_unpublished_line(output_dir, *, cancelled: bool, published_proof: Mapping[str, object] | None, excluded_stores: tuple[str, ...]) -> str`:
+    with no `published_proof`, today's line. With one: when `excluded_stores` is non-empty,
+    spec PA4's D15 line naming them; otherwise the gap line, which names no store.
+    `<logs>` is `slurm_logs_dir(output_dir)`. `_report_outcome` (`:427+`) passes the snapshot's
+    `excluded_stores`, never a fresh resolve.
 
 - [ ] **Step 1: Write the failing tests.**
 
@@ -222,14 +274,20 @@ def test_the_verdict_comes_from_the_same_pass(monkeypatch, tmp_path):   # N1
     _run_snapshot(build_run_with_failures(tmp_path))
     assert calls == [1]
 
-def test_an_excluded_store_exits_5_naming_it(monkeypatch, tmp_path, capsys):   # N3, D15
-    out = build_run_with_failures(tmp_path, omit_from_proof=("img-a",))
+def test_an_unprojectable_store_exits_5_naming_it(monkeypatch, tmp_path, capsys):   # N3, D15, R2-C1
+    out = build_run_with_failures(tmp_path, unprojectable_stems=("c",))
     code = wait_for_run(out, **no_live_jobs_published(monkeypatch, out))
     text = capsys.readouterr().out
     assert code is RunExitCode.ENDED_UNPUBLISHED
-    assert "leave out d1/img-a" in text and "Fix or remove those stores" in text
+    assert "leave out plate/c" in text and "re-measuring them" in text
 
-def test_a_stale_publication_exits_5_with_the_generic_variant(monkeypatch, tmp_path, capsys):
+def test_a_rolling_input_gap_exits_5_naming_no_store(monkeypatch, tmp_path, capsys):   # R2-C1
+    out = build_run_with_failures(tmp_path, late_stems=("c",))
+    assert wait_for_run(out, **no_live_jobs_published(monkeypatch, out)) is RunExitCode.ENDED_UNPUBLISHED
+    text = capsys.readouterr().out
+    assert "no longer cover the run" in text and "plate/" not in text
+
+def test_a_stale_publication_exits_5_with_the_gap_line(monkeypatch, tmp_path, capsys):
     out = build_run_with_failures(tmp_path); bump_metadata_snapshot_digest(out)
     assert wait_for_run(out, **no_live_jobs_published(monkeypatch, out)) is RunExitCode.ENDED_UNPUBLISHED
     assert "no longer cover the run" in capsys.readouterr().out
@@ -239,22 +297,26 @@ def test_the_variant_needs_a_published_proof(monkeypatch, tmp_path, capsys):   #
     wait_for_run(out, **no_live_jobs_published(monkeypatch, out))
     assert "published nothing" in capsys.readouterr().out
 
+def test_the_excluded_names_come_from_the_same_pass(monkeypatch, tmp_path):   # R2-I4
+    calls = count_calls(monkeypatch, "phenotypic.sdk_.resolve_run_state")
+    snap = _run_snapshot(build_run_with_failures(tmp_path, unprojectable_stems=("c",)))
+    assert calls == [1] and snap.excluded_stores == ("plate/c",)
+
 def test_an_all_failed_run_exits_3(monkeypatch, tmp_path):                    # D16, Review Focus 1
-    out = build_run_with_failures(tmp_path, failed_stems=("img-a", "img-b"))
+    out = build_run_with_failures(tmp_path, failed_stems=("a", "b"))
     assert finished_run_outcome(out, None) is RunExitCode.COMPLETE_WITH_FAILURES
     assert wait_for_run(out, **no_live_jobs_published(monkeypatch, out)) is RunExitCode.COMPLETE_WITH_FAILURES
 
+def test_an_all_failed_slurm_run_exits_3(tmp_path):                           # D16 on SLURM, R2-M3
+    out = build_run_with_failures(tmp_path, failed_stems=("a", "b"))
+    gen = finish_slurm_generation_all_failed(out)   # the real finalizer path: no aggregate,
+                                                    # closes "terminal_incomplete" (_cli_checkpoint_handler.py:317-331, 395-401)
+    assert _published(out, gen) is True
+    assert finished_run_outcome(out, gen) is RunExitCode.COMPLETE_WITH_FAILURES
+
 def test_accept_failures_stays_strict(monkeypatch, tmp_path):                  # D15
-    out = build_run_with_failures(tmp_path, omit_from_proof=("img-a",))
+    out = build_run_with_failures(tmp_path, unprojectable_stems=("c",))
     assert wait_for_run(out, accept_failures=True, **no_live_jobs_published(monkeypatch, out)) is RunExitCode.ENDED_UNPUBLISHED
-
-def test_the_proof_records_excluded_work_ids(tmp_path):                        # D15
-    out = build_run_with_failures(tmp_path, omit_from_proof=("img-a",))
-    assert json.loads(aggregate_publication_marker_path(out).read_text())["excluded_work_ids"] == [work_id_of(out, "img-a")]
-
-def test_finished_run_outcome_ignores_liveness(tmp_path):
-    out = build_run_with_failures(tmp_path)
-    assert finished_run_outcome(out, None) is RunExitCode.COMPLETE_WITH_FAILURES
 ```
 
 Every existing `decide_wait_outcome` test keeps its assertions; those that reach rule 3 gain
@@ -343,7 +405,7 @@ def test_a_dead_owner_release_keeps_n(tmp_path, dead_owner_pid):               #
     assert persisted_owner(out)["failed_images"] == 1
 
 def test_an_all_failed_cli_run_is_claimable_for_retry_failures(tmp_path):      # D16
-    out = build_run_with_failures(tmp_path, failed_stems=("img-a", "img-b"))
+    out = build_run_with_failures(tmp_path, failed_stems=("a", "b"))
     assert RunRegistry._foreign_run_conflict(out) is None
 
 @pytest.mark.parametrize("status", sorted(_RUN_STATUSES))
@@ -362,7 +424,7 @@ def test_a_gui_launched_run_with_failures_is_claimable(tmp_path):          # D10
     assert reg.allocate(mode="local", output_dir=out, rel_path=..., command_digest="x", status="queued")
 
 def test_a_failed_image_beside_an_unresolved_image_refuses(tmp_path):      # split of :363-390
-    out = build_run_with_failures(tmp_path); drop_success_record(out, "img-a")
+    out = build_run_with_failures(tmp_path); drop_success_record(out, "a")
     msg = RunRegistry._foreign_run_conflict(out)
     assert "unfinished run with 1 failed image(s)" in msg and "from the CLI" in msg   # N7
     assert "non-GUI" not in msg

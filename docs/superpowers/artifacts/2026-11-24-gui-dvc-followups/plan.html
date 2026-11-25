@@ -71,8 +71,9 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 }
 </style>
 <div class="wrap">
-<header class="top"><div class="eyebrow">Build plan · PhenoTypic #283 / #282 · 2026-11-24</div><h1>GUI Follow-ups Implementation Plan (#283 PR A, #282 GUI items PR B)</h1><div class="meta"><p><strong>Status:</strong> revision 2 · 2026-11-25 · revised per <code>reports/2026-11-24-gui-dvc-followups/plan-review.md</code></p>
-<p>and the user's decisions D15–D18; see "Revision 2" at the end</p>
+<header class="top"><div class="eyebrow">Build plan · PhenoTypic #283 / #282 · 2026-11-24</div><h1>GUI Follow-ups Implementation Plan (#283 PR A, #282 GUI items PR B)</h1><div class="meta"><p><strong>Status:</strong> revision 3 · 2026-11-25 · revised per <code>reports/2026-11-24-gui-dvc-followups/plan-review.md</code></p>
+<p>(the review, then its "Re-review of revision 2") and the user's decisions D15–D18; see</p>
+<p>"Revision 2" and "Revision 3" at the end</p>
 <p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-11-24-gui-dvc-followups/design.md</code>, as committed with this</p>
 <p>revision (decisions D1–D18, no open question)</p>
 <p><strong>Reviews behind the spec:</strong> <code>docs/superpowers/reports/2026-11-24-gui-dvc-followups/spec-review.md</code></p>
@@ -87,7 +88,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <p><code>0993c8e06</code>; PB0 re-finds them on the new base by name.</p></li>
 </ul>
 </div></header>
-<nav class="toc" aria-label="Contents"><b>GUI Follow-ups Plan</b><ul><li class="l2"><a href="#d0-global-constraints">Global Constraints</a></li><li class="l3"><a href="#d0-the-13-inherited-reds-pr-a-turns-them-green">The 13 inherited reds (PR A turns them green)</a></li><li class="l2"><a href="#d0-review-focus">Review Focus</a></li><li class="l2"><a href="#d0-conventions-for-every-task">Conventions for every task</a></li><li class="l2"><a href="#d0-phases">Phases</a></li><li class="l2"><a href="#d0-execution">Execution</a></li><li class="l3"><a href="#d0-dependency-dag">Dependency DAG</a></li><li class="l3"><a href="#d0-shapes-and-clusters">Shapes and clusters</a></li><li class="l3"><a href="#d0-stop-points-that-need-the-user">Stop points that need the user</a></li><li class="l2"><a href="#d0-spec-coverage">Spec coverage</a></li><li class="l2"><a href="#d0-spec-findings-from-planning">Spec findings from planning</a></li><li class="l2"><a href="#d0-revision-2-plan-review">Revision 2 (plan review)</a></li><li class="l2"><a href="#d0-render">Render</a></li></ul><b>PA1 · The verdict, the waiter, exit codes and the new status</b><ul><li class="l3"><a href="#d1-task-1-run_finished_with_failuresstate-output_dir-c1">Task 1: run_finished_with_failures(state, output_dir) (C1)</a></li><li class="l3"><a href="#d1-task-2-the-waiter-composes-the-verdict-c1-d14-n3">Task 2: the waiter composes the verdict (C1, D14, N3)</a></li><li class="l3"><a href="#d1-task-3-the-status-local-exits-rehydration-and-the-claim-gate-c2">Task 3: the status, local exits, rehydration and the claim gate (C2)</a></li><li class="l3"><a href="#d1-task-4-submit_slurm-classifies-the-exit-c3">Task 4: submit_slurm classifies the exit (C3)</a></li><li class="l3"><a href="#d1-task-5-the-observer-hook-c4">Task 5: the observer hook (C4)</a></li><li class="l3"><a href="#d1-task-6-the-snapshot-badge-arm-c4-d3-i4">Task 6: the snapshot badge arm (C4, D3, I4)</a></li><li class="l3"><a href="#d1-pa1-gate">PA1 gate</a></li></ul><b>PA2 · The results viewer reads per-pipeline tables</b><ul><li class="l3"><a href="#d2-task-1-_store_and_identity-through-declared_measurement_table_path-c5">Task 1: _store_and_identity through declared_measurement_table_path (C5)</a></li><li class="l3"><a href="#d2-pa2-gate">PA2 gate</a></li></ul><b>PA3 · TSV everywhere a writer exists; `measurements.csv` retired</b><ul><li class="l3"><a href="#d3-task-1-the-cli-stops-writing-measurementscsv-c6">Task 1: the CLI stops writing measurements.csv (C6)</a></li><li class="l3"><a href="#d3-task-2-the-test-sweep-over-the-csv-mirror-c7">Task 2: the test sweep over the CSV mirror (C7)</a></li><li class="l3"><a href="#d3-task-3-curation-writes-the-tsv-c8">Task 3: curation writes the TSV (C8)</a></li><li class="l3"><a href="#d3-pa3-gate">PA3 gate</a></li></ul><b>PA4 · Typed config suffixes and TSV-capable pickers</b><ul><li class="l3"><a href="#d4-task-1-is_pipeline_config_path-and-the-suffix-surfaces-c9">Task 1: is_pipeline_config_path and the suffix surfaces (C9)</a></li><li class="l3"><a href="#d4-task-2-tsv-capable-pickers-and-readers-c10">Task 2: TSV-capable pickers and readers (C10)</a></li><li class="l3"><a href="#d4-pa4-gate">PA4 gate</a></li></ul><b>PA5 · Curation of a run that finished with failures</b><ul><li class="l3"><a href="#d5-task-1-run_permits_mutation-at-every-write-authority-site-c11">Task 1: run_permits_mutation at every write-authority site (C11)</a></li><li class="l3"><a href="#d5-pa4pa5-gate">PA4–PA5 gate</a></li></ul><b>PA6 · Docs, ledgers, tutorial text, screenshots, simplify</b><ul><li class="l3"><a href="#d6-task-1-docs-and-the-exit-5-surfaces-c12">Task 1: docs and the exit-5 surfaces (C12)</a></li><li class="l3"><a href="#d6-task-2-ledgers-tutorial-text-screenshots-c13">Task 2: ledgers, tutorial text, screenshots (C13)</a></li><li class="l3"><a href="#d6-task-3-simplify-c14">Task 3: simplify (C14)</a></li></ul><b>PA7 · Rebase onto `main` and merge back to back (D9)</b><ul><li class="l3"><a href="#d7-task-1-rebase-and-re-verify-c15">Task 1: rebase and re-verify (C15)</a></li><li class="l3"><a href="#d7-task-2-final-gates-and-the-pr-c15">Task 2: final gates and the PR (C15)</a></li></ul><b>PB0 · PR B&#x27;s cut point and #282&#x27;s rebase gate</b><ul><li class="l3"><a href="#d8-task-1-cut-and-gate-c16-orchestrator">Task 1: cut and gate (C16, orchestrator)</a></li></ul><b>PB1 · One resolver; the `--embed-stage` control and the GPU section</b><ul><li class="l3"><a href="#d9-task-1-resolve_embed_stage_for_pipeline-c17">Task 1: resolve_embed_stage_for_pipeline (C17)</a></li><li class="l3"><a href="#d9-task-2-the-control-visibility-hint-and-no-hidden-flags-c17">Task 2: the control, visibility, hint and no hidden flags (C17)</a></li></ul><b>PB2 · Stage-4 refusals in `rc-staged-gpu-refusal`</b><ul><li class="l3"><a href="#d10-task-1-_launch_refusal-c18">Task 1: _launch_refusal (C18)</a></li></ul><b>PB3 · `--mode measure` in the run console (D6)</b><ul><li class="l3"><a href="#d11-task-1-the-selector-the-form-rules-validate-c19">Task 1: the selector, the form rules, Validate (C19)</a></li><li class="l3"><a href="#d11-task-2-the-registry-records-a-measure-run-c19">Task 2: the registry records a measure run (C19)</a></li><li class="l3"><a href="#d11-task-3-the-observers-measure-outcomes-c19-d13">Task 3: the observer's measure outcomes (C19, D13)</a></li><li class="l3"><a href="#d11-pb1pb3-gate">PB1–PB3 gate</a></li></ul><b>PB4 · Ledgers, the live GPU launch, simplify and the full regression</b><ul><li class="l3"><a href="#d12-task-1-ledgers-frames-tutorial-text-c20">Task 1: ledgers, frames, tutorial text (C20)</a></li><li class="l3"><a href="#d12-task-2-the-live-gpu-stage-launch-c21-orchestrator-stop-3">Task 2: the live GPU-stage launch (C21, orchestrator, stop 3)</a></li><li class="l3"><a href="#d12-task-3-simplify-full-regression-pr-c22">Task 3: simplify, full regression, PR (C22)</a></li></ul></nav>
+<nav class="toc" aria-label="Contents"><b>GUI Follow-ups Plan</b><ul><li class="l2"><a href="#d0-global-constraints">Global Constraints</a></li><li class="l3"><a href="#d0-the-13-inherited-reds-pr-a-turns-them-green">The 13 inherited reds (PR A turns them green)</a></li><li class="l2"><a href="#d0-review-focus">Review Focus</a></li><li class="l2"><a href="#d0-conventions-for-every-task">Conventions for every task</a></li><li class="l2"><a href="#d0-phases">Phases</a></li><li class="l2"><a href="#d0-execution">Execution</a></li><li class="l3"><a href="#d0-dependency-dag">Dependency DAG</a></li><li class="l3"><a href="#d0-shapes-and-clusters">Shapes and clusters</a></li><li class="l3"><a href="#d0-stop-points-that-need-the-user">Stop points that need the user</a></li><li class="l2"><a href="#d0-spec-coverage">Spec coverage</a></li><li class="l2"><a href="#d0-spec-findings-from-planning">Spec findings from planning</a></li><li class="l2"><a href="#d0-revision-2-plan-review">Revision 2 (plan review)</a></li><li class="l2"><a href="#d0-revision-3-plan-re-review">Revision 3 (plan re-review)</a></li><li class="l2"><a href="#d0-render">Render</a></li></ul><b>PA1 · The verdict, the waiter, exit codes and the new status</b><ul><li class="l3"><a href="#d1-task-1-run_finished_with_failuresstate-output_dir-c1">Task 1: run_finished_with_failures(state, output_dir) (C1)</a></li><li class="l3"><a href="#d1-task-2-the-waiter-composes-the-verdict-c1-d14-n3">Task 2: the waiter composes the verdict (C1, D14, N3)</a></li><li class="l3"><a href="#d1-task-3-the-status-local-exits-rehydration-and-the-claim-gate-c2">Task 3: the status, local exits, rehydration and the claim gate (C2)</a></li><li class="l3"><a href="#d1-task-4-submit_slurm-classifies-the-exit-c3">Task 4: submit_slurm classifies the exit (C3)</a></li><li class="l3"><a href="#d1-task-5-the-observer-hook-c4">Task 5: the observer hook (C4)</a></li><li class="l3"><a href="#d1-task-6-the-snapshot-badge-arm-c4-d3-i4">Task 6: the snapshot badge arm (C4, D3, I4)</a></li><li class="l3"><a href="#d1-pa1-gate">PA1 gate</a></li></ul><b>PA2 · The results viewer reads per-pipeline tables</b><ul><li class="l3"><a href="#d2-task-1-_store_and_identity-through-declared_measurement_table_path-c5">Task 1: _store_and_identity through declared_measurement_table_path (C5)</a></li><li class="l3"><a href="#d2-pa2-gate">PA2 gate</a></li></ul><b>PA3 · TSV everywhere a writer exists; `measurements.csv` retired</b><ul><li class="l3"><a href="#d3-task-1-the-cli-stops-writing-measurementscsv-c6">Task 1: the CLI stops writing measurements.csv (C6)</a></li><li class="l3"><a href="#d3-task-2-the-test-sweep-over-the-csv-mirror-c7">Task 2: the test sweep over the CSV mirror (C7)</a></li><li class="l3"><a href="#d3-task-3-curation-writes-the-tsv-c8">Task 3: curation writes the TSV (C8)</a></li><li class="l3"><a href="#d3-pa3-gate">PA3 gate</a></li></ul><b>PA4 · Typed config suffixes and TSV-capable pickers</b><ul><li class="l3"><a href="#d4-task-1-is_pipeline_config_path-and-the-suffix-surfaces-c9">Task 1: is_pipeline_config_path and the suffix surfaces (C9)</a></li><li class="l3"><a href="#d4-task-2-tsv-capable-pickers-and-readers-c10">Task 2: TSV-capable pickers and readers (C10)</a></li><li class="l3"><a href="#d4-pa4-gate">PA4 gate</a></li></ul><b>PA5 · Curation of a run that finished with failures</b><ul><li class="l3"><a href="#d5-task-1-run_permits_mutation-at-every-write-authority-site-c11">Task 1: run_permits_mutation at every write-authority site (C11)</a></li><li class="l3"><a href="#d5-pa4pa5-gate">PA4–PA5 gate</a></li></ul><b>PA6 · Docs, ledgers, tutorial text, screenshots, simplify</b><ul><li class="l3"><a href="#d6-task-1-docs-and-the-exit-5-surfaces-c12">Task 1: docs and the exit-5 surfaces (C12)</a></li><li class="l3"><a href="#d6-task-2-ledgers-tutorial-text-screenshots-c13">Task 2: ledgers, tutorial text, screenshots (C13)</a></li><li class="l3"><a href="#d6-task-3-simplify-c14">Task 3: simplify (C14)</a></li></ul><b>PA7 · Rebase onto `main` and merge back to back (D9)</b><ul><li class="l3"><a href="#d7-task-1-rebase-and-re-verify-c15">Task 1: rebase and re-verify (C15)</a></li><li class="l3"><a href="#d7-task-2-final-gates-and-the-pr-c15">Task 2: final gates and the PR (C15)</a></li></ul><b>PB0 · PR B&#x27;s cut point and #282&#x27;s rebase gate</b><ul><li class="l3"><a href="#d8-task-1-cut-and-gate-c16-orchestrator">Task 1: cut and gate (C16, orchestrator)</a></li></ul><b>PB1 · One resolver; the `--embed-stage` control and the GPU section</b><ul><li class="l3"><a href="#d9-task-1-resolve_embed_stage_for_pipeline-c17">Task 1: resolve_embed_stage_for_pipeline (C17)</a></li><li class="l3"><a href="#d9-task-2-the-control-visibility-hint-and-no-hidden-flags-c17">Task 2: the control, visibility, hint and no hidden flags (C17)</a></li></ul><b>PB2 · Stage-4 refusals in `rc-staged-gpu-refusal`</b><ul><li class="l3"><a href="#d10-task-1-_launch_refusal-c18">Task 1: _launch_refusal (C18)</a></li></ul><b>PB3 · `--mode measure` in the run console (D6)</b><ul><li class="l3"><a href="#d11-task-1-the-selector-the-form-rules-validate-c19">Task 1: the selector, the form rules, Validate (C19)</a></li><li class="l3"><a href="#d11-task-2-the-registry-records-a-measure-run-c19">Task 2: the registry records a measure run (C19)</a></li><li class="l3"><a href="#d11-task-3-the-observers-measure-outcomes-c19-d13">Task 3: the observer's measure outcomes (C19, D13)</a></li><li class="l3"><a href="#d11-pb1pb3-gate">PB1–PB3 gate</a></li></ul><b>PB4 · Ledgers, the live GPU launch, simplify and the full regression</b><ul><li class="l3"><a href="#d12-task-1-ledgers-frames-tutorial-text-c20">Task 1: ledgers, frames, tutorial text (C20)</a></li><li class="l3"><a href="#d12-task-2-the-live-gpu-stage-launch-c21-orchestrator-stop-3">Task 2: the live GPU-stage launch (C21, orchestrator, stop 3)</a></li><li class="l3"><a href="#d12-task-3-simplify-full-regression-pr-c22">Task 3: simplify, full regression, PR (C22)</a></li></ul></nav>
 <main><section class="doc"><div class="docsrc">README.md</div><blockquote>
 <p><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.</p>
 </blockquote>
@@ -109,8 +110,8 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><strong>Status vocabulary:</strong> the new literal is exactly <code>complete_with_failures</code>; label <code>complete · N failed</code> (Recent Runs, banner), badge <code>Run complete · N images failed</code> (warning), colour <code>--oi-orange-text</code>. <code>incomplete</code> is never persisted (D13).</li>
 <li><strong>The claim gate</strong> allows only <code>complete</code> and a confirmed <code>complete_with_failures</code>; it refuses the five states in spec PA11's table, and a process tree with failures (N4).</li>
 <li><strong>CSV retirement:</strong> <code>measurements.csv</code> is unlinked only <strong>after</strong> its TSV is published, and in finalize inside <code>commit_guard</code> when one is given. <code>_KEPT_CSV_STEMS == {"error_analysis", "metadata"}</code>: <code>error_analysis.csv</code> stays CSV (D18) and <code>metadata.&lt;ext&gt;</code> is never swept. <code>MEASUREMENTS_CSV</code>, <code>measurements_csv_path</code>, <code>BundleLayout.mirror_csv</code> stay defined as legacy read names. <code>_GUI_WRITTEN_PROOF_DESCRIPTORS</code> keeps <code>measurements_csv</code>.</li>
-<li><strong>The verdict</strong> is <code>run_finished_with_failures(state, output_dir)</code>; its config comes from <code>RunState.finalization_digests</code> and <code>.process_only_layer</code>, filled by <code>resolve_run_state</code>'s one read (spec PA4). An all-failed run is confirmed through the no-proof arm (D16).</li>
-<li><strong><code>--accept-failures</code> maps only <code>3</code> to <code>0</code></strong> (D15). The exit-5 variant prints only when this generation published an aggregate proof.</li>
+<li><strong>The verdict</strong> is <code>run_finished_with_failures(state, output_dir)</code>; its config comes from <code>RunState.finalization_digests</code> and <code>.process_only_layer</code>, filled by <code>resolve_run_state</code>'s one read (spec PA4). An all-failed run is confirmed through the no-proof arm (D16), which tests the marker <strong>by path</strong>, refuses a master or mirror Parquet left by another generation, and requires a finalizer-closed fence when a fence exists.</li>
+<li><strong><code>--accept-failures</code> maps only <code>3</code> to <code>0</code></strong> (D15). The exit-5 variant prints only when this generation published an aggregate proof, and names a store only through <code>excluded_store_names</code> (the per-image unprojectable predicate, shared with <code>_advisories</code>), never from "verified minus sources". No marker field is added.</li>
 <li><strong>D17:</strong> the claim gate cannot see a local CLI run; the docs say so, and no task adds a lock.</li>
 <li><strong>Suffixes:</strong> canonical <code>.pht-pipe.json</code>, <code>.pht-op.json</code>, <code>.pht-cc.json</code>, <code>.pht-tune.json</code>; legacy <code>.json.pht-*</code> read-only; a plain <code>pipeline.json</code> is never removed (#281 A4).</li>
 <li><strong>Unmounted tune app</strong> (<code>_gui/CLAUDE.md:20-26</code>): only reds #1–6's sites and D8's pickers.</li>
@@ -125,7 +126,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <h2 id="d0-review-focus">Review Focus</h2>
 <p>Inputs the spec implies but no spec test names. Each is pinned in the task named.</p>
 <ol type="1">
-<li><strong>A run whose every image failed</strong> (verified = 0, no aggregate proof possible). It is <code>complete_with_failures</code> (D16): the verdict returns N, the waiter exits <code>3</code>, Recent Runs reads "complete · N failed", and the GUI can relaunch it. A stray marker or an unresolved image keeps it <code>failed</code>. Pinned in PA1 T1 (<code>test_an_all_failed_run_is_finished_with_failures</code>, <code>test_an_all_failed_run_with_a_stray_marker_returns_none</code>, <code>test_an_all_failed_run_with_an_unresolved_image_returns_none</code>), PA1 T2 (<code>test_an_all_failed_run_exits_3</code>) and PA1 T3 (<code>test_an_all_failed_cli_run_is_claimable_for_retry_failures</code>).</li>
+<li><strong>A run whose every image failed</strong> (verified = 0, no aggregate proof possible). It is <code>complete_with_failures</code> (D16): the verdict returns N, the waiter exits <code>3</code>, Recent Runs reads "complete · N failed", and the GUI can relaunch it. Any marker, an old master from before a <code>--restart</code>, a non-finalizer fence or an unresolved image keeps it <code>failed</code>. Pinned in PA1 T1 (<code>test_an_all_failed_run_is_finished_with_failures</code>, <code>test_an_all_failed_run_beside_any_marker_returns_none</code>, <code>test_an_all_failed_restart_beside_an_old_master_returns_none</code>, <code>test_an_all_failed_run_reads_its_fence</code>, <code>test_an_all_failed_run_with_an_unresolved_image_returns_none</code>), PA1 T2 (<code>test_an_all_failed_run_exits_3</code>) and PA1 T3 (<code>test_an_all_failed_cli_run_is_claimable_for_retry_failures</code>).</li>
 <li><strong>A #281-era tree curated by the old GUI</strong>: a curated <code>measurements.csv</code>, an uncurated <code>measurements.tsv</code>, a curated <code>.parquet</code>. No reader may show the uncurated TSV's rows; the next curation rewrites the TSV from the Parquet and retires the CSV. Pinned in PA3 T3 (<code>test_an_old_gui_curated_tree_is_repaired_by_the_next_curation</code>).</li>
 <li><strong>A metadata TSV written by Excel or R</strong>: a BOM, a quoted field holding a tab. Browse's panel and the run console's preflight read the same rows as the equivalent CSV. Pinned in PA4 T2 (<code>test_an_excel_tsv_reads_like_its_csv</code>).</li>
 <li><strong>A relaunch that turns <code>complete_with_failures</code> into <code>complete</code></strong> on the same output (<code>--retry-failures</code> fixes the last image). The record's <code>failed_images</code> becomes <code>None</code>, the badge reads <code>Current</code>, and Recent Runs shows <code>complete</code>. Pinned in PA1 T3 (<code>test_a_retry_that_fixes_every_image_clears_failed_images</code>).</li>
@@ -305,7 +306,15 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 </tr>
 <tr class="even">
 <td><code>_cli/_cli_completion.py</code></td>
-<td>PA1 T2 (<code>excluded_work_ids</code>), PA3 T1 (<code>required_paths</code>)</td>
+<td>PA3 T1 (<code>required_paths</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>_cli/_cli_slurm_lifecycle.py</code></td>
+<td>PA1 T1 (<code>FENCE_CLOSED_BY_FINALIZER</code> re-export)</td>
+</tr>
+<tr class="even">
+<td><code>tests/unit/sdk_/test_run_state.py</code></td>
+<td>PA1 T1 (field set; moved <code>authorize_measurements</code>)</td>
 </tr>
 <tr class="odd">
 <td><code>_gui/shell/_runs_registry.py</code></td>
@@ -371,7 +380,7 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 </table></div>
 <p><strong>Parallel lanes</strong> (zero file overlap with the line they run beside, each in its own worktree off the branch tip, merged back by the orchestrator):</p>
 <ul>
-<li><strong>Lane V:</strong> PA2 T1 runs alongside PA1. Its files (<code>results_viewer/_measurement_source.py</code>, <code>_zarr_routes.py</code>, <code>_shared/tiles.py</code>, and three <code>tests/unit/gui/results_viewer/</code> files) touch nothing on the main line.</li>
+<li><strong>Lane V:</strong> PA2 T1 runs alongside PA1. Its files (<code>results_viewer/_measurement_source.py</code>, <code>_zarr_routes.py</code>, <code>_shared/tiles.py</code>, and four test files: <code>test_measurement_source.py</code>, <code>test_measurement_routes.py</code>, <code>test_measurement_join_migration_run.py</code>, <code>test_zarr_routes.py</code>) touch nothing on the main line. Its new helpers stay in its own test modules (R2-M1).</li>
 <li><strong>No Lane T</strong> (plan review I8). PA3 runs on the main line after PA1: it shares <code>tests/_output_layout.py</code>, <code>tests/unit/gui/test_snapshot_status.py</code>, <code>sdk_/_io_constants.py</code> and <code>tests/unit/sdk_/test_io_constants.py</code> with PA1 and PA4. Before PA3 T1 lands, <code>publish_aggregate_snapshot</code> still resolves <code>measurements.csv</code> strictly, so PA1 T1's helper must write it; it does, through <code>write_measurements_mirror</code>'s default.</li>
 </ul>
 <h3 id="d0-shapes-and-clusters">Shapes and clusters</h3>
@@ -624,8 +633,8 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 <td><strong>deferred (D18)</strong>: spec §8, no task</td>
 </tr>
 <tr class="odd">
-<td>D15 <code>--accept-failures</code> strict; <code>excluded_work_ids</code>; the exit-5 line</td>
-<td>PA1 T2</td>
+<td>D15 <code>--accept-failures</code> strict; the exit-5 line names stores through <code>excluded_store_names</code></td>
+<td>PA1 T1 (helper), T2 (line)</td>
 </tr>
 <tr class="even">
 <td>D16 the all-failed no-proof arm</td>
@@ -848,6 +857,66 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 </tr>
 </tbody>
 </table></div>
+<h2 id="d0-revision-3-plan-re-review">Revision 3 (plan re-review)</h2>
+<p>Revised 2026-11-25 against <code>plan-review.md</code>, "Re-review of revision 2" (<code>9a31a5361</code>). Each finding, and where it is fixed:</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Finding</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>R2-C1</strong> <code>excluded_work_ids</code> measured a gap, not an exclusion</td>
+<td>Dropped from the spec and plan; <code>publish_aggregate_snapshot</code> is unchanged. PA1 T1: <code>excluded_store_names(images)</code> factored out of <code>_advisories</code> (<code>_run_state.py:1680-1695</code>), shared by both; PA1 T2: the line names a store only through it, otherwise the gap line. The fixture's <code>omit_from_proof</code> is replaced by <code>unprojectable_stems</code> (a real unprojectable store, <code>authorize_measurements(projectable=False)</code>) and <code>late_stems</code> (the rolling-input gap, which must name no store). <code>test_a_master_that_merely_predates_an_image_claims_no_exclusion</code> stays green unedited</td>
+</tr>
+<tr class="even">
+<td><strong>R2-I1</strong> The pinned <code>RunState</code> field set</td>
+<td>PA1 T1 Files: <code>test_run_state.py:56-75</code> and <code>tracked_state.md:43-53</code> change deliberately, with the docstring line</td>
+</tr>
+<tr class="odd">
+<td><strong>R2-I2</strong> The no-proof arm</td>
+<td>Spec PA4 step 4 and PA1 T1: the marker tested by path (<code>[valid]</code>, <code>[wrong_version]</code>, <code>[empty_outputs]</code>); no master or mirror Parquet from another generation (<code>test_an_all_failed_restart_beside_an_old_master_returns_none</code>, and its confirmed twin with no deliverables); the killed-retry case pinned both ways (<code>test_a_killed_retry_that_verified_nothing_stays_confirmed</code>, <code>test_a_retry_that_verified_one_image_returns_none</code>); spec N7 and PA7's tutorial line corrected</td>
+</tr>
+<tr class="even">
+<td><strong>R2-I3</strong> The PA5 flip test</td>
+<td>PA5 T1: three stems, completion asserted <code>failed</code>, only the verdict flips; <code>test_a_fresh_verdict_whose_n_differs_refuses</code> added. PA1 T1's retry test relabelled and given three stems, so it isolates the source set</td>
+</tr>
+<tr class="odd">
+<td><strong>R2-I4</strong> The waiter keeps no <code>RunState</code></td>
+<td>PA1 T2: <code>RunSnapshot.excluded_stores</code> from the same pass; <code>_unpublished_line</code> takes it; <code>test_the_excluded_names_come_from_the_same_pass</code></td>
+</tr>
+<tr class="even">
+<td><strong>R2-M1</strong> Lane V helpers; the count</td>
+<td>PA2: its helpers stay in its own test modules; README: four test files</td>
+</tr>
+<tr class="odd">
+<td><strong>R2-M2</strong> Fixture names</td>
+<td>PA1 T1: the inventory is <code>FIXTURE_STEMS</code> ∪ named stems in <code>FIXTURE_DATASET</code> (<code>"plate"</code>); tests use <code>a</code>/<code>b</code>/<code>c</code> and expect <code>plate/c</code></td>
+</tr>
+<tr class="even">
+<td><strong>R2-M3</strong> The SLURM all-failed waiter case</td>
+<td>PA1 T2 <code>test_an_all_failed_slurm_run_exits_3</code>, through the real finalizer path</td>
+</tr>
+<tr class="odd">
+<td><strong>R2-M4</strong> One cancelled all-failed run, two answers</td>
+<td>Spec PA4 step 4: the no-proof arm requires a finalizer-closed fence when one exists; <code>FENCE_CLOSED_BY_FINALIZER</code> moves to sdk_; <code>test_an_all_failed_run_reads_its_fence</code></td>
+</tr>
+<tr class="even">
+<td><strong>R2-M5</strong> "under <code>commit_guard</code>"</td>
+<td>Spec PA8: "when one is given"</td>
+</tr>
+<tr class="odd">
+<td><strong>R2-M6</strong> PB3's helper move</td>
+<td>PB3 T1: grep for monkeypatch targets on the rebased tree first; re-export only if one exists</td>
+</tr>
+<tr class="even">
+<td><strong>I7 note</strong> <code>inject_descriptor</code> hand-edits the proof</td>
+<td>PA3 T1's test says so (no writer produces a pre-PA8 proof after T1); PA1 T1's <code>write_marker</code> invalid kinds carry the same note</td>
+</tr>
+</tbody>
+</table></div>
 <h2 id="d0-render">Render</h2>
 <p>From this folder, with the files in phase order:</p>
 <div class="sourceCode" id="d0-cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="d0-cb3-1"><a href="#d0-cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> run <span class="at">--no-project</span> python ~/.claude/tools/render_md_artifact.py <span class="dt">\</span></span>
@@ -866,27 +935,38 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 <p><strong>Files:</strong></p>
 <ul>
 <li>Modify: <code>src/phenotypic/sdk_/_state_types.py:155-166</code>: <code>RunState</code> gains <code>finalization_digests: frozenset[str] = frozenset()</code> and <code>process_only_layer: str | None = None</code>.</li>
-<li>Modify: <code>src/phenotypic/sdk_/_run_state.py</code>: <code>resolve_run_state</code> (<code>:1848+</code>) fills both from its one config read (<code>_read_state_config</code>, <code>:134</code>; <code>accepted_finalization_digests</code>, <code>:1436</code>); add the verdict and the two shared helpers beside <code>_run_proof_covers_current_inventory</code> (<code>:1464-1541</code>), which calls them.</li>
-<li>Modify: <code>src/phenotypic/sdk_/__init__.py</code>: export <code>run_finished_with_failures</code> beside <code>aggregate_proof_is_current</code> (<code>:455, 645</code>).</li>
-<li>Create (helpers), in <code>tests/_output_layout.py</code>: <code>build_run_with_failures(tmp_path: Path, *, failed_stems: Sequence[str] = ("img-b",), unresolved_stems: Sequence[str] = (), omit_from_proof: Sequence[str] = (), process_only_layer: str | None = None) -&gt; Path</code>. Built with the real publishers, in <code>build_complete_run</code>'s order (<code>:448-528</code>):
+<li>Modify: <code>src/phenotypic/sdk_/_run_state.py</code>:
 <ul>
-<li><code>write_processing_state</code> (<code>:288</code>) over every stem;</li>
-<li><code>publish_image_success</code> (<code>_cli/_cli_completion.py:217</code>) for each <strong>verified</strong> stem (not in <code>failed_stems</code> or <code>unresolved_stems</code>); <code>append_terminal_failure</code> (<code>_cli/_cli_failure_tracker.py:562</code>) for each failed stem; nothing for an unresolved stem;</li>
-<li>when <code>process_only_layer</code> is set: <strong>no</strong> master, mirror or aggregate (as <code>build_complete_run</code> does, <code>:503-517</code>);</li>
-<li>when no stem is verified: <strong>no</strong> aggregate (<code>publish_aggregate_snapshot</code> refuses zero successes, <code>_cli_completion.py:1179-1181</code>);</li>
-<li>otherwise the master and mirror over the verified stems <strong>minus <code>omit_from_proof</code></strong>, then <code>publish_aggregate_snapshot(source_work_ids=&lt;the same set&gt;)</code>. An omitted stem is absent from the master, the mirror and the proof, as a real exclusion leaves it.</li>
-<li>It uses <code>write_measurements_mirror</code>'s default, so it works before and after PA3 T2 flips that default.</li>
+<li><code>resolve_run_state</code> (<code>:1848+</code>) fills both from its one config read (<code>_read_state_config</code>, <code>:134</code>; <code>accepted_finalization_digests</code>, <code>:1436</code>);</li>
+<li>add the verdict and the two shared helpers beside <code>_run_proof_covers_current_inventory</code> (<code>:1464-1541</code>), which calls them;</li>
+<li>factor the exclusion predicate out of <code>_advisories</code> (<code>:1680-1695</code>) into <code>excluded_store_names</code>, which <code>_advisories</code> then calls (R2-C1).</li>
+</ul></li>
+<li>Modify: <code>src/phenotypic/sdk_/_io_constants.py</code>: add <code>FENCE_CLOSED_BY_FINALIZER = "finalizer"</code>; <code>src/phenotypic/_cli/_cli_slurm_lifecycle.py:47</code> imports it from sdk_ instead of defining it.</li>
+<li>Modify: <code>src/phenotypic/sdk_/__init__.py</code>: export <code>run_finished_with_failures</code>, <code>excluded_store_names</code>, <code>FENCE_CLOSED_BY_FINALIZER</code> beside <code>aggregate_proof_is_current</code> (<code>:455, 645</code>).</li>
+<li>Modify (pinned, deliberately; R2-I1): <code>tests/unit/sdk_/test_run_state.py:56-75</code> (<code>test_the_demoted_sources_live_only_under_diagnostics</code>: the field set gains the two names, and its docstring says they are configuration the resolver already read, not demoted evidence); <code>docs/source/contrib_guide/tracked_state.md:43-53</code> (two rows).</li>
+<li>Create (helpers), in <code>tests/_output_layout.py</code>:
+<ul>
+<li><code>authorize_measurements(root: Path, stem: str, *, projectable: bool = True) -&gt; None</code>: moved from <code>tests/unit/sdk_/test_run_state.py</code>'s module-local <code>_authorize_measurements</code> (used by <code>_build_excluded_store_run</code>, <code>:654-690</code>), which then imports it.</li>
+<li><code>build_run_with_failures(tmp_path: Path, *, failed_stems: Sequence[str] = ("b",), unresolved_stems: Sequence[str] = (), unprojectable_stems: Sequence[str] = (), late_stems: Sequence[str] = (), process_only_layer: str | None = None) -&gt; Path</code>.
+<ul>
+<li><strong>Stems (R2-M2):</strong> the inventory is <code>FIXTURE_STEMS</code> (<code>("a", "b")</code>, <code>:191</code>) ∪ every named stem, in one dataset, <code>FIXTURE_DATASET</code> (<code>"plate"</code>, <code>:190</code>). A store is named <code>plate/&lt;stem&gt;</code>.</li>
+<li><code>write_processing_state</code> (<code>:288</code>) over every stem; <code>append_terminal_failure</code> (<code>_cli/_cli_failure_tracker.py:562</code>) for each failed stem; nothing for an unresolved stem.</li>
+<li>Every other stem is <strong>verified</strong> (<code>publish_image_success</code>, <code>_cli_completion.py:217</code>). An <strong>unprojectable</strong> stem is verified through <code>authorize_measurements(projectable=False)</code>: its record authorizes a table its store declares no column list for, as a real exclusion leaves it (R2-C1). A <strong>late</strong> stem is verified and projectable, but published after the proof: the rolling-input gap.</li>
+<li>With <code>process_only_layer</code>: no master, mirror or aggregate (as <code>build_complete_run</code>, <code>:503-517</code>). With no verified stem: no aggregate (<code>_cli_completion.py:1179-1181</code>).</li>
+<li>Otherwise the master, the mirror and <code>publish_aggregate_snapshot(source_work_ids=...)</code> over the verified stems <strong>minus</strong> unprojectable and late stems.</li>
+<li>It uses <code>write_measurements_mirror</code>'s default, so it works before and after PA3 T2.</li>
+</ul></li>
 </ul></li>
 <li>Test: <code>tests/unit/sdk_/test_run_finished_with_failures.py</code> (new, shared env)</li>
 </ul>
 <p><strong>Interfaces:</strong></p>
 <ul>
-<li>Consumes: <code>resolve_run_state(output_dir, depth=...) -&gt; RunState</code>; <code>_valid_aggregate_proof</code> (<code>:1397</code>); <code>_source_set_binding</code> (<code>:1542</code>); <code>canonical_digest</code> (<code>sdk_/_digests.py:46</code>); <code>RunState.images[work_id].verdict</code>, <code>.identity</code>.</li>
+<li>Consumes: <code>resolve_run_state(output_dir, depth=...) -&gt; RunState</code>; <code>_valid_aggregate_proof</code> (<code>:1397</code>); <code>_source_set_binding</code> (<code>:1542</code>); <code>aggregate_publication_marker_path</code>, <code>master_measurements_parquet_path</code>, <code>measurements_parquet_path</code>, <code>slurm_lifecycle_path</code>; <code>canonical_digest</code> (<code>sdk_/_digests.py:46</code>); <code>RunState.images[work_id].verdict</code>, <code>.identity</code>.</li>
 <li>Produces:
 <ul>
-<li><code>run_finished_with_failures(state: RunState, output_dir: Path) -&gt; int | None</code>: spec PA4 steps 1–5. Its only disk read is the aggregate proof (<code>_valid_aggregate_proof</code>, which also tells the no-proof arm whether a marker exists). It never reads <code>processing_state.json</code>.</li>
-<li><code>_identity_digests_match(proof: Mapping[str, object], identity: RunIdentity) -&gt; bool</code>: inventory and scientific digests.</li>
-<li><code>_source_set_matches(binding: Mapping[str, object], verified: Sequence[str]) -&gt; bool</code>: <code>source_set_digest</code> and <code>source_image_count</code>.</li>
+<li><code>run_finished_with_failures(state: RunState, output_dir: Path) -&gt; int | None</code>: spec PA4 steps 1–5. Its disk reads are the aggregate proof, and, in the no-proof arm only, three existence checks (the marker path, the two Parquet deliverables) and the lifecycle file. It never reads <code>processing_state.json</code>.</li>
+<li><code>_identity_digests_match(proof: Mapping[str, object], identity: RunIdentity) -&gt; bool</code>; <code>_source_set_matches(binding: Mapping[str, object], verified: Sequence[str]) -&gt; bool</code>.</li>
+<li><code>excluded_store_names(images: Mapping[str, ImageState]) -&gt; tuple[str, ...]</code>: sorted <code>"&lt;dataset&gt;/&lt;image_stem&gt;"</code> of verified images with <code>declares_measurements is True</code> and <code>projectable_measurements is False</code>. <code>_advisories</code>' wording is unchanged.</li>
 <li><code>RunState.finalization_digests</code>, <code>RunState.process_only_layer</code>.</li>
 </ul></li>
 </ul>
@@ -897,91 +977,114 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 <div class="sourceCode" id="d1-cb1"><pre class="sourceCode python"><code class="sourceCode python"><span id="d1-cb1-1"><a href="#d1-cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> _state(out): <span class="cf">return</span> resolve_run_state(out, depth<span class="op">=</span><span class="st">&quot;deep&quot;</span>)</span>
 <span id="d1-cb1-2"><a href="#d1-cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="d1-cb1-3"><a href="#d1-cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_finished_run_with_failures_returns_n(tmp_path):</span>
-<span id="d1-cb1-4"><a href="#d1-cb1-4" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)</span>
+<span id="d1-cb1-4"><a href="#d1-cb1-4" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)                       <span class="co"># a verified, b failed</span></span>
 <span id="d1-cb1-5"><a href="#d1-cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="op">==</span> <span class="dv">1</span></span>
 <span id="d1-cb1-6"><a href="#d1-cb1-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-7"><a href="#d1-cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_unresolved_image_beside_a_current_proof_returns_none(tmp_path):     <span class="co"># C2: isolates step 2</span></span>
-<span id="d1-cb1-8"><a href="#d1-cb1-8" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;img-b&quot;</span>,), unresolved_stems<span class="op">=</span>(<span class="st">&quot;img-c&quot;</span>,))</span>
-<span id="d1-cb1-9"><a href="#d1-cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d1-cb1-7"><a href="#d1-cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_live_run_returns_none(tmp_path):                       <span class="co"># step 1</span></span>
+<span id="d1-cb1-8"><a href="#d1-cb1-8" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> hold_active_fence(out)</span>
+<span id="d1-cb1-9"><a href="#d1-cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> _state(out).completion <span class="op">==</span> <span class="st">&quot;active&quot;</span> <span class="kw">and</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
 <span id="d1-cb1-10"><a href="#d1-cb1-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-11"><a href="#d1-cb1-11" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_no_aggregate_proof_with_a_verified_image_returns_none(tmp_path):</span>
-<span id="d1-cb1-12"><a href="#d1-cb1-12" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)</span>
-<span id="d1-cb1-13"><a href="#d1-cb1-13" aria-hidden="true" tabindex="-1"></a>    aggregate_publication_marker_path(out).unlink()</span>
-<span id="d1-cb1-14"><a href="#d1-cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
-<span id="d1-cb1-15"><a href="#d1-cb1-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-16"><a href="#d1-cb1-16" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_killed_retry_continuation_returns_none(tmp_path):                   <span class="co"># source set</span></span>
-<span id="d1-cb1-17"><a href="#d1-cb1-17" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)</span>
-<span id="d1-cb1-18"><a href="#d1-cb1-18" aria-hidden="true" tabindex="-1"></a>    publish_image_success_for(out, <span class="st">&quot;img-b&quot;</span>)       <span class="co"># a success outranks the failure (_run_state.py:986-996)</span></span>
-<span id="d1-cb1-19"><a href="#d1-cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
-<span id="d1-cb1-20"><a href="#d1-cb1-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-21"><a href="#d1-cb1-21" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_killed_metadata_change_returns_none(tmp_path):                      <span class="co"># finalization digest</span></span>
-<span id="d1-cb1-22"><a href="#d1-cb1-22" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)</span>
-<span id="d1-cb1-23"><a href="#d1-cb1-23" aria-hidden="true" tabindex="-1"></a>    bump_metadata_snapshot_digest(out)            <span class="co"># tests/_output_layout.py:769</span></span>
-<span id="d1-cb1-24"><a href="#d1-cb1-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
-<span id="d1-cb1-25"><a href="#d1-cb1-25" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-26"><a href="#d1-cb1-26" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_edited_pipeline_returns_none(tmp_path):                            <span class="co"># scientific digest</span></span>
-<span id="d1-cb1-27"><a href="#d1-cb1-27" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)</span>
-<span id="d1-cb1-28"><a href="#d1-cb1-28" aria-hidden="true" tabindex="-1"></a>    bump_scientific_config_digest(out)            <span class="co"># :360</span></span>
-<span id="d1-cb1-29"><a href="#d1-cb1-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
-<span id="d1-cb1-30"><a href="#d1-cb1-30" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-31"><a href="#d1-cb1-31" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_new_image_that_failed_returns_none(tmp_path):                       <span class="co"># C2: isolates inventory</span></span>
-<span id="d1-cb1-32"><a href="#d1-cb1-32" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)</span>
-<span id="d1-cb1-33"><a href="#d1-cb1-33" aria-hidden="true" tabindex="-1"></a>    accept_and_fail(out, <span class="st">&quot;img-c&quot;</span>)                 <span class="co"># inventory moves, every image resolved, proof older</span></span>
-<span id="d1-cb1-34"><a href="#d1-cb1-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
-<span id="d1-cb1-35"><a href="#d1-cb1-35" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-36"><a href="#d1-cb1-36" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_excluded_store_returns_none(tmp_path):                             <span class="co"># N3</span></span>
-<span id="d1-cb1-37"><a href="#d1-cb1-37" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, omit_from_proof<span class="op">=</span>(<span class="st">&quot;img-a&quot;</span>,))</span>
-<span id="d1-cb1-38"><a href="#d1-cb1-38" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
-<span id="d1-cb1-39"><a href="#d1-cb1-39" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-40"><a href="#d1-cb1-40" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_process_run_returns_none(tmp_path):                                 <span class="co"># N4</span></span>
-<span id="d1-cb1-41"><a href="#d1-cb1-41" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, process_only_layer<span class="op">=</span><span class="st">&quot;gray&quot;</span>)</span>
-<span id="d1-cb1-42"><a href="#d1-cb1-42" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
-<span id="d1-cb1-43"><a href="#d1-cb1-43" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-44"><a href="#d1-cb1-44" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_live_run_returns_none(tmp_path):                                   <span class="co"># step 1</span></span>
-<span id="d1-cb1-45"><a href="#d1-cb1-45" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> hold_active_fence(out)       <span class="co"># initialize_slurm_lifecycle</span></span>
-<span id="d1-cb1-46"><a href="#d1-cb1-46" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> _state(out).completion <span class="op">==</span> <span class="st">&quot;active&quot;</span></span>
-<span id="d1-cb1-47"><a href="#d1-cb1-47" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
-<span id="d1-cb1-48"><a href="#d1-cb1-48" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-49"><a href="#d1-cb1-49" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_curated_mirror_does_not_move_the_verdict(tmp_path):</span>
-<span id="d1-cb1-50"><a href="#d1-cb1-50" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)</span>
-<span id="d1-cb1-51"><a href="#d1-cb1-51" aria-hidden="true" tabindex="-1"></a>    rewrite_mirror_rows(out)                      <span class="co"># curation-shaped: .parquet and .tsv/.csv only</span></span>
-<span id="d1-cb1-52"><a href="#d1-cb1-52" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="op">==</span> <span class="dv">1</span></span>
+<span id="d1-cb1-11"><a href="#d1-cb1-11" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_unresolved_image_beside_a_current_proof_returns_none(tmp_path):     <span class="co"># step 2</span></span>
+<span id="d1-cb1-12"><a href="#d1-cb1-12" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, unresolved_stems<span class="op">=</span>(<span class="st">&quot;c&quot;</span>,))</span>
+<span id="d1-cb1-13"><a href="#d1-cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d1-cb1-14"><a href="#d1-cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-15"><a href="#d1-cb1-15" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_no_aggregate_proof_with_a_verified_image_returns_none(tmp_path):</span>
+<span id="d1-cb1-16"><a href="#d1-cb1-16" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> aggregate_publication_marker_path(out).unlink()</span>
+<span id="d1-cb1-17"><a href="#d1-cb1-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d1-cb1-18"><a href="#d1-cb1-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-19"><a href="#d1-cb1-19" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_retry_that_verified_one_image_returns_none(tmp_path):  <span class="co"># source set (R2-I3 label)</span></span>
+<span id="d1-cb1-20"><a href="#d1-cb1-20" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;b&quot;</span>, <span class="st">&quot;c&quot;</span>))</span>
+<span id="d1-cb1-21"><a href="#d1-cb1-21" aria-hidden="true" tabindex="-1"></a>    publish_image_success_for(out, <span class="st">&quot;b&quot;</span>)                           <span class="co"># c still failed</span></span>
+<span id="d1-cb1-22"><a href="#d1-cb1-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> _state(out).completion <span class="op">==</span> <span class="st">&quot;failed&quot;</span>                     <span class="co"># so step 1 does not kill it</span></span>
+<span id="d1-cb1-23"><a href="#d1-cb1-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d1-cb1-24"><a href="#d1-cb1-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-25"><a href="#d1-cb1-25" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_killed_retry_that_verified_nothing_stays_confirmed(tmp_path):   <span class="co"># R2-I2, N7</span></span>
+<span id="d1-cb1-26"><a href="#d1-cb1-26" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)</span>
+<span id="d1-cb1-27"><a href="#d1-cb1-27" aria-hidden="true" tabindex="-1"></a>    append_retry_attempt_without_result(out, <span class="st">&quot;b&quot;</span>)                 <span class="co"># the journal row stays</span></span>
+<span id="d1-cb1-28"><a href="#d1-cb1-28" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="op">==</span> <span class="dv">1</span></span>
+<span id="d1-cb1-29"><a href="#d1-cb1-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-30"><a href="#d1-cb1-30" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_killed_metadata_change_returns_none(tmp_path):         <span class="co"># finalization digest</span></span>
+<span id="d1-cb1-31"><a href="#d1-cb1-31" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> bump_metadata_snapshot_digest(out)   <span class="co"># :769</span></span>
+<span id="d1-cb1-32"><a href="#d1-cb1-32" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d1-cb1-33"><a href="#d1-cb1-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-34"><a href="#d1-cb1-34" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_edited_pipeline_returns_none(tmp_path):               <span class="co"># scientific digest</span></span>
+<span id="d1-cb1-35"><a href="#d1-cb1-35" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> bump_scientific_config_digest(out)   <span class="co"># :360</span></span>
+<span id="d1-cb1-36"><a href="#d1-cb1-36" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d1-cb1-37"><a href="#d1-cb1-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-38"><a href="#d1-cb1-38" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_new_image_that_failed_returns_none(tmp_path):          <span class="co"># inventory digest</span></span>
+<span id="d1-cb1-39"><a href="#d1-cb1-39" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> accept_and_fail(out, <span class="st">&quot;c&quot;</span>)</span>
+<span id="d1-cb1-40"><a href="#d1-cb1-40" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d1-cb1-41"><a href="#d1-cb1-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-42"><a href="#d1-cb1-42" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_unprojectable_store_returns_none_and_is_named(tmp_path):      <span class="co"># R2-C1</span></span>
+<span id="d1-cb1-43"><a href="#d1-cb1-43" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, unprojectable_stems<span class="op">=</span>(<span class="st">&quot;c&quot;</span>,))</span>
+<span id="d1-cb1-44"><a href="#d1-cb1-44" aria-hidden="true" tabindex="-1"></a>    state <span class="op">=</span> _state(out)</span>
+<span id="d1-cb1-45"><a href="#d1-cb1-45" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(state, out) <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d1-cb1-46"><a href="#d1-cb1-46" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> excluded_store_names(state.images) <span class="op">==</span> (<span class="st">&quot;plate/c&quot;</span>,)</span>
+<span id="d1-cb1-47"><a href="#d1-cb1-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-48"><a href="#d1-cb1-48" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_late_image_returns_none_and_names_no_store(tmp_path):         <span class="co"># rolling input</span></span>
+<span id="d1-cb1-49"><a href="#d1-cb1-49" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, late_stems<span class="op">=</span>(<span class="st">&quot;c&quot;</span>,))</span>
+<span id="d1-cb1-50"><a href="#d1-cb1-50" aria-hidden="true" tabindex="-1"></a>    state <span class="op">=</span> _state(out)</span>
+<span id="d1-cb1-51"><a href="#d1-cb1-51" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(state, out) <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d1-cb1-52"><a href="#d1-cb1-52" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> excluded_store_names(state.images) <span class="op">==</span> ()</span>
 <span id="d1-cb1-53"><a href="#d1-cb1-53" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-54"><a href="#d1-cb1-54" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_all_failed_run_is_finished_with_failures(tmp_path):                <span class="co"># D16, Review Focus 1</span></span>
-<span id="d1-cb1-55"><a href="#d1-cb1-55" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;img-a&quot;</span>, <span class="st">&quot;img-b&quot;</span>))</span>
-<span id="d1-cb1-56"><a href="#d1-cb1-56" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="kw">not</span> aggregate_publication_marker_path(out).exists()</span>
-<span id="d1-cb1-57"><a href="#d1-cb1-57" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="op">==</span> <span class="dv">2</span></span>
-<span id="d1-cb1-58"><a href="#d1-cb1-58" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-59"><a href="#d1-cb1-59" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_all_failed_run_with_a_stray_marker_returns_none(tmp_path):         <span class="co"># D16 arm, marker check</span></span>
-<span id="d1-cb1-60"><a href="#d1-cb1-60" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)       <span class="co"># img-a verified, proof published</span></span>
-<span id="d1-cb1-61"><a href="#d1-cb1-61" aria-hidden="true" tabindex="-1"></a>    drop_success_record(out, <span class="st">&quot;img-a&quot;</span>)<span class="op">;</span> fail_image(out, <span class="st">&quot;img-a&quot;</span>)   <span class="co"># verified image lost, now failed</span></span>
-<span id="d1-cb1-62"><a href="#d1-cb1-62" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> aggregate_publication_marker_path(out).exists()</span>
-<span id="d1-cb1-63"><a href="#d1-cb1-63" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
-<span id="d1-cb1-64"><a href="#d1-cb1-64" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-65"><a href="#d1-cb1-65" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_all_failed_run_with_an_unresolved_image_returns_none(tmp_path):    <span class="co"># D16 arm, step 2</span></span>
-<span id="d1-cb1-66"><a href="#d1-cb1-66" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;img-a&quot;</span>,), unresolved_stems<span class="op">=</span>(<span class="st">&quot;img-b&quot;</span>,))</span>
-<span id="d1-cb1-67"><a href="#d1-cb1-67" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
-<span id="d1-cb1-68"><a href="#d1-cb1-68" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-69"><a href="#d1-cb1-69" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_verdict_reads_neither_state_nor_config(monkeypatch, tmp_path):    <span class="co"># N1, I1</span></span>
-<span id="d1-cb1-70"><a href="#d1-cb1-70" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> state <span class="op">=</span> _state(out)</span>
-<span id="d1-cb1-71"><a href="#d1-cb1-71" aria-hidden="true" tabindex="-1"></a>    monkeypatch.<span class="bu">setattr</span>(run_state_module, <span class="st">&quot;resolve_run_state&quot;</span>, _explode)</span>
-<span id="d1-cb1-72"><a href="#d1-cb1-72" aria-hidden="true" tabindex="-1"></a>    monkeypatch.<span class="bu">setattr</span>(run_state_module, <span class="st">&quot;_read_state_config&quot;</span>, _explode)</span>
-<span id="d1-cb1-73"><a href="#d1-cb1-73" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(state, out) <span class="op">==</span> <span class="dv">1</span></span>
-<span id="d1-cb1-74"><a href="#d1-cb1-74" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-75"><a href="#d1-cb1-75" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_resolve_fills_the_finalization_digests(tmp_path):</span>
-<span id="d1-cb1-76"><a href="#d1-cb1-76" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)</span>
-<span id="d1-cb1-77"><a href="#d1-cb1-77" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> _state(out).finalization_digests <span class="op">==</span> accepted_finalization_digests(read_config(out))</span>
-<span id="d1-cb1-78"><a href="#d1-cb1-78" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb1-79"><a href="#d1-cb1-79" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_rule_one_still_proves_a_complete_run(tmp_path):</span>
-<span id="d1-cb1-80"><a href="#d1-cb1-80" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> _state(build_complete_run(tmp_path)).completion <span class="op">==</span> <span class="st">&quot;complete&quot;</span></span></code></pre></div>
-<p>The small helpers (<code>hold_active_fence</code>, <code>drop_success_record</code>, <code>publish_image_success_for</code>, <code>accept_and_fail</code>, <code>fail_image</code>, <code>rewrite_mirror_rows</code>, <code>read_config</code>, <code>_explode</code>) live in the test module, each a call to a real writer or an <code>unlink</code>. None hand-edits the failure journal (append-only).</p>
+<span id="d1-cb1-54"><a href="#d1-cb1-54" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_process_run_returns_none(tmp_path):                    <span class="co"># N4</span></span>
+<span id="d1-cb1-55"><a href="#d1-cb1-55" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, process_only_layer<span class="op">=</span><span class="st">&quot;gray&quot;</span>)</span>
+<span id="d1-cb1-56"><a href="#d1-cb1-56" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d1-cb1-57"><a href="#d1-cb1-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-58"><a href="#d1-cb1-58" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_curated_mirror_does_not_move_the_verdict(tmp_path):</span>
+<span id="d1-cb1-59"><a href="#d1-cb1-59" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> rewrite_mirror_rows(out)</span>
+<span id="d1-cb1-60"><a href="#d1-cb1-60" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="op">==</span> <span class="dv">1</span></span>
+<span id="d1-cb1-61"><a href="#d1-cb1-61" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-62"><a href="#d1-cb1-62" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_all_failed_run_is_finished_with_failures(tmp_path):   <span class="co"># D16, Review Focus 1</span></span>
+<span id="d1-cb1-63"><a href="#d1-cb1-63" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;a&quot;</span>, <span class="st">&quot;b&quot;</span>))</span>
+<span id="d1-cb1-64"><a href="#d1-cb1-64" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="op">==</span> <span class="dv">2</span></span>
+<span id="d1-cb1-65"><a href="#d1-cb1-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-66"><a href="#d1-cb1-66" aria-hidden="true" tabindex="-1"></a><span class="at">@pytest.mark.parametrize</span>(<span class="st">&quot;marker&quot;</span>, [<span class="st">&quot;valid&quot;</span>, <span class="st">&quot;wrong_version&quot;</span>, <span class="st">&quot;empty_outputs&quot;</span>])    <span class="co"># R2-I2: by path</span></span>
+<span id="d1-cb1-67"><a href="#d1-cb1-67" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_all_failed_run_beside_any_marker_returns_none(tmp_path, marker):</span>
+<span id="d1-cb1-68"><a href="#d1-cb1-68" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;a&quot;</span>, <span class="st">&quot;b&quot;</span>))</span>
+<span id="d1-cb1-69"><a href="#d1-cb1-69" aria-hidden="true" tabindex="-1"></a>    write_marker(out, kind<span class="op">=</span>marker)                                <span class="co"># _valid_aggregate_proof is None for two of these</span></span>
+<span id="d1-cb1-70"><a href="#d1-cb1-70" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d1-cb1-71"><a href="#d1-cb1-71" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-72"><a href="#d1-cb1-72" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_all_failed_restart_beside_an_old_master_returns_none(tmp_path):    <span class="co"># R2-I2: another generation</span></span>
+<span id="d1-cb1-73"><a href="#d1-cb1-73" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)                       <span class="co"># a once-published tree</span></span>
+<span id="d1-cb1-74"><a href="#d1-cb1-74" aria-hidden="true" tabindex="-1"></a>    restart_and_fail_everything(out)                              <span class="co"># clears .phenotypic/, keeps deliverables/</span></span>
+<span id="d1-cb1-75"><a href="#d1-cb1-75" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> master_measurements_parquet_path(out).exists()</span>
+<span id="d1-cb1-76"><a href="#d1-cb1-76" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d1-cb1-77"><a href="#d1-cb1-77" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-78"><a href="#d1-cb1-78" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_all_failed_restart_with_no_deliverables_is_confirmed(tmp_path):</span>
+<span id="d1-cb1-79"><a href="#d1-cb1-79" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> restart_and_fail_everything(out, clear_deliverables<span class="op">=</span><span class="va">True</span>)</span>
+<span id="d1-cb1-80"><a href="#d1-cb1-80" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="op">==</span> <span class="dv">2</span></span>
+<span id="d1-cb1-81"><a href="#d1-cb1-81" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-82"><a href="#d1-cb1-82" aria-hidden="true" tabindex="-1"></a><span class="at">@pytest.mark.parametrize</span>(<span class="st">&quot;fence,expected&quot;</span>, [(<span class="st">&quot;finalizer&quot;</span>, <span class="dv">2</span>), (<span class="st">&quot;cancelled&quot;</span>, <span class="va">None</span>), (<span class="st">&quot;finalizer_failed&quot;</span>, <span class="va">None</span>)])</span>
+<span id="d1-cb1-83"><a href="#d1-cb1-83" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_all_failed_run_reads_its_fence(tmp_path, fence, expected):    <span class="co"># R2-M4</span></span>
+<span id="d1-cb1-84"><a href="#d1-cb1-84" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;a&quot;</span>, <span class="st">&quot;b&quot;</span>))<span class="op">;</span> close_fence(out, how<span class="op">=</span>fence)</span>
+<span id="d1-cb1-85"><a href="#d1-cb1-85" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="op">==</span> expected</span>
+<span id="d1-cb1-86"><a href="#d1-cb1-86" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-87"><a href="#d1-cb1-87" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_all_failed_run_with_an_unresolved_image_returns_none(tmp_path):</span>
+<span id="d1-cb1-88"><a href="#d1-cb1-88" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;a&quot;</span>,), unresolved_stems<span class="op">=</span>(<span class="st">&quot;b&quot;</span>,))</span>
+<span id="d1-cb1-89"><a href="#d1-cb1-89" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(_state(out), out) <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d1-cb1-90"><a href="#d1-cb1-90" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-91"><a href="#d1-cb1-91" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_verdict_reads_neither_state_nor_config(monkeypatch, tmp_path):    <span class="co"># N1, I1</span></span>
+<span id="d1-cb1-92"><a href="#d1-cb1-92" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> state <span class="op">=</span> _state(out)</span>
+<span id="d1-cb1-93"><a href="#d1-cb1-93" aria-hidden="true" tabindex="-1"></a>    monkeypatch.<span class="bu">setattr</span>(run_state_module, <span class="st">&quot;resolve_run_state&quot;</span>, _explode)</span>
+<span id="d1-cb1-94"><a href="#d1-cb1-94" aria-hidden="true" tabindex="-1"></a>    monkeypatch.<span class="bu">setattr</span>(run_state_module, <span class="st">&quot;_read_state_config&quot;</span>, _explode)</span>
+<span id="d1-cb1-95"><a href="#d1-cb1-95" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(state, out) <span class="op">==</span> <span class="dv">1</span></span>
+<span id="d1-cb1-96"><a href="#d1-cb1-96" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-97"><a href="#d1-cb1-97" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_resolve_fills_the_finalization_digests(tmp_path):</span>
+<span id="d1-cb1-98"><a href="#d1-cb1-98" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)</span>
+<span id="d1-cb1-99"><a href="#d1-cb1-99" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> _state(out).finalization_digests <span class="op">==</span> accepted_finalization_digests(read_config(out))</span>
+<span id="d1-cb1-100"><a href="#d1-cb1-100" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb1-101"><a href="#d1-cb1-101" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_rule_one_still_proves_a_complete_run(tmp_path):</span>
+<span id="d1-cb1-102"><a href="#d1-cb1-102" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> _state(build_complete_run(tmp_path)).completion <span class="op">==</span> <span class="st">&quot;complete&quot;</span></span></code></pre></div>
+<p>The small helpers (<code>hold_active_fence</code>, <code>publish_image_success_for</code>, <code>append_retry_attempt_without_result</code>, <code>accept_and_fail</code>, <code>rewrite_mirror_rows</code>, <code>write_marker</code>, <code>restart_and_fail_everything</code>, <code>close_fence</code>, <code>read_config</code>, <code>_explode</code>) live in the test module, each a call to a real writer (<code>initialize_slurm_lifecycle</code>, <code>cancel_generation</code>, <code>mark_generation_failed</code>, the <code>--restart</code> clearing function) or an <code>unlink</code>. <code>write_marker</code>'s two invalid kinds are the one hand-edit, because no writer produces an invalid marker; the test says so. None edits the failure journal by hand.</p>
+<p><code>test_a_master_that_merely_predates_an_image_claims_no_exclusion</code> (<code>tests/unit/sdk_/test_run_state.py:1351</code>) and <code>test_a_store_the_master_excluded_is_named_and_the_run_stays_incomplete</code> (<code>:1272</code>) must stay green unedited: they pin <code>excluded_store_names</code>' two answers through <code>_advisories</code>.</p>
 <ul class="task-list">
 <li><p><input type="checkbox" disabled="" />
 <strong>Step 2: Run them; every verdict test fails with <code>ImportError</code>.</strong> <code>$PT tests/unit/sdk_/test_run_finished_with_failures.py</code></p></li>
 <li><p><input type="checkbox" disabled="" />
-<strong>Step 3: Implement</strong> the two <code>RunState</code> fields, the two helpers, the verdict, and route <code>_run_proof_covers_current_inventory</code> through the helpers (its process branch and <code>_source_set_binding</code> unchanged).</p></li>
+<strong>Step 3: Implement</strong> the two <code>RunState</code> fields, the two helpers, <code>excluded_store_names</code>, the constant move, the verdict; route <code>_run_proof_covers_current_inventory</code> through the helpers (its process branch and <code>_source_set_binding</code> unchanged).</p></li>
 <li><p><input type="checkbox" disabled="" />
-<strong>Step 4: Run the new file plus <code>tests/unit/sdk_/test_run_state.py</code> and <code>test_run_state_layering.py</code>; all pass.</strong></p></li>
+<strong>Step 4: Run the new file plus <code>tests/unit/sdk_/test_run_state.py</code> (with the deliberate field-set edit) and <code>test_run_state_layering.py</code>; all pass.</strong></p></li>
 <li><p><input type="checkbox" disabled="" />
 <strong>Step 5: Mutation check, by deletion</strong> (plan review C2). Delete one conjunct at a time; each must fail the named test:</p><div class="scroll"><table>
 <thead>
@@ -993,7 +1096,7 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 <tbody>
 <tr class="odd">
 <td>step 1 (<code>completion == "failed"</code>)</td>
-<td>a live-fence case added here: <code>test_a_live_run_returns_none</code></td>
+<td><code>test_a_live_run_returns_none</code></td>
 </tr>
 <tr class="even">
 <td>step 2 (no unresolved image)</td>
@@ -1017,41 +1120,56 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 </tr>
 <tr class="odd">
 <td>source-set digest <strong>and</strong> count</td>
-<td><code>test_a_killed_retry_continuation_returns_none</code>, <code>test_an_excluded_store_returns_none</code></td>
+<td><code>test_a_retry_that_verified_one_image_returns_none</code>, <code>test_an_unprojectable_store_returns_none_and_is_named</code>, <code>test_a_late_image_returns_none_and_names_no_store</code></td>
 </tr>
 <tr class="even">
-<td>step 4 no-marker check</td>
-<td><code>test_an_all_failed_run_with_a_stray_marker_returns_none</code></td>
+<td>step 4 marker-by-path</td>
+<td><code>test_an_all_failed_run_beside_any_marker_returns_none[valid]</code>, <code>[wrong_version]</code>, <code>[empty_outputs]</code></td>
 </tr>
 <tr class="odd">
+<td>step 4 marker check rewritten through <code>_valid_aggregate_proof</code></td>
+<td><code>[wrong_version]</code>, <code>[empty_outputs]</code> (the review's "absent vs invalid" mutant)</td>
+</tr>
+<tr class="even">
+<td>step 4 no other-generation deliverable</td>
+<td><code>test_an_all_failed_restart_beside_an_old_master_returns_none</code></td>
+</tr>
+<tr class="odd">
+<td>step 4 finalizer-closed fence</td>
+<td><code>test_an_all_failed_run_reads_its_fence[cancelled]</code>, <code>[finalizer_failed]</code></td>
+</tr>
+<tr class="even">
 <td>step 5 (process)</td>
 <td><code>test_a_process_run_returns_none</code></td>
 </tr>
+<tr class="odd">
+<td><code>excluded_store_names</code>' <code>projectable is False</code> clause</td>
+<td><code>test_a_late_image_returns_none_and_names_no_store</code>, <code>test_a_master_that_merely_predates_an_image_claims_no_exclusion</code></td>
+</tr>
 </tbody>
 </table></div>
-<p><code>source_image_count</code> cannot be isolated from <code>source_set_digest</code> (both move with the verified set); the table says so rather than claiming separate coverage. Each mutant of the two shared helpers must also fail a rule-1 test in <code>test_run_state.py</code>. Back up by full path, restore from the saved bytes, hash-check; record the table, with each result, in the cluster report.</p></li>
+<p><code>source_image_count</code> cannot be isolated from <code>source_set_digest</code> (both move with the verified set); the table says so rather than claiming separate coverage. Each mutant of the two shared helpers must also fail a rule-1 test (<code>test_each_of_rule_ones_comparisons_is_load_bearing</code>, <code>test_run_state.py:1034</code>; <code>test_clause_one_is_load_bearing</code>, <code>:953</code>). Back up by full path, restore from the saved bytes, hash-check; record the table, with each result, in the cluster report.</p></li>
 <li><p><input type="checkbox" disabled="" />
-<strong>Step 6: Commit</strong> the four source files and the two test files.</p></li>
+<strong>Step 6: Commit</strong> the source files, the moved helper, and the test files.</p></li>
 </ul>
 <h3 id="d1-task-2-the-waiter-composes-the-verdict-c1-d14-n3">Task 2: the waiter composes the verdict (C1, D14, N3)</h3>
 <p><strong>Files:</strong></p>
 <ul>
 <li>Modify: <code>src/phenotypic/_cli/_cli_wait.py</code>: <code>RunSnapshot</code> (<code>:90-111</code>), <code>_run_snapshot</code> (<code>:116-130</code>), <code>decide_wait_outcome</code> (<code>:309-366</code>), <code>_unpublished_line</code> (<code>:404-424</code>); add <code>finished_run_outcome</code>.</li>
 <li>Modify: <code>src/phenotypic/sdk_/_exit_codes.py:29-30</code> docstring (ENDED_UNPUBLISHED).</li>
-<li>Modify: <code>src/phenotypic/_cli/_cli_completion.py:1120-1265</code> (<code>publish_aggregate_snapshot</code>): the marker gains <code>excluded_work_ids</code> (D15).</li>
-<li>Test: <code>tests/unit/cli/test_cli_wait.py</code>, <code>tests/unit/cli/test_cli_completion.py</code></li>
+<li>No change to <code>publish_aggregate_snapshot</code> (R2-C1: no marker field).</li>
+<li>Test: <code>tests/unit/cli/test_cli_wait.py</code></li>
 </ul>
 <p><strong>Interfaces:</strong></p>
 <ul>
 <li>Consumes: Task 1's <code>run_finished_with_failures</code>.</li>
 <li>Produces:
 <ul>
-<li><code>RunSnapshot.finished_with_failures: int | None = None</code>, computed in <code>_run_snapshot</code>'s one <code>resolve_run_state</code> pass.</li>
+<li><code>RunSnapshot.finished_with_failures: int | None = None</code> and <code>RunSnapshot.excluded_stores: tuple[str, ...] = ()</code>, both computed in <code>_run_snapshot</code>'s one <code>resolve_run_state</code> pass (<code>excluded_store_names(state.images)</code>, Task 1; R2-I4).</li>
 <li><code>decide_wait_outcome(..., finished_with_failures: int | None = None) -&gt; RunExitCode | None</code>: still pure. Rule 3 requires <code>published and finished_with_failures is not None</code>; rule 4 (process) unchanged.</li>
 <li><code>finished_run_outcome(output_dir: Path, generation: str | None) -&gt; RunExitCode | None</code>: <code>decide_wait_outcome</code> over one <code>_run_snapshot</code> and the other seams, with <code>live</code> empty. Only the SLURM observer calls it (Task 5).</li>
-<li><code>publish_aggregate_snapshot(...)</code>: same signature; the marker gains <code>"excluded_work_ids": sorted(&lt;currently verified work ids&gt; - set(source_work_ids))</code>, the verified set read by <code>_current_success_work_ids</code> (<code>_cli_completion.py:831</code>). No version bump.</li>
 <li><code>_proof_published_by(output_dir: Path, generation: str | None) -&gt; Mapping[str, object] | None</code>: the aggregate marker when its <code>execution_epoch</code> is <code>generation</code> (with <code>None</code>, any marker), else <code>None</code>.</li>
-<li><code>_unpublished_line(output_dir, *, cancelled: bool, published_proof: Mapping[str, object] | None, state: RunState) -&gt; str</code>: with no <code>published_proof</code>, today's line. With one: when <code>excluded_work_ids</code> is non-empty, spec PA4's D15 line naming each as <code>&lt;dataset&gt;/&lt;image&gt;</code> from <code>state.images</code>; otherwise the "no longer cover the run" line. <code>&lt;logs&gt;</code> is <code>slurm_logs_dir(output_dir)</code>.</li>
+<li><code>_unpublished_line(output_dir, *, cancelled: bool, published_proof: Mapping[str, object] | None, excluded_stores: tuple[str, ...]) -&gt; str</code>: with no <code>published_proof</code>, today's line. With one: when <code>excluded_stores</code> is non-empty, spec PA4's D15 line naming them; otherwise the gap line, which names no store. <code>&lt;logs&gt;</code> is <code>slurm_logs_dir(output_dir)</code>. <code>_report_outcome</code> (<code>:427+</code>) passes the snapshot's <code>excluded_stores</code>, never a fresh resolve.</li>
 </ul></li>
 </ul>
 <ul class="task-list">
@@ -1075,39 +1193,49 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 <span id="d1-cb2-15"><a href="#d1-cb2-15" aria-hidden="true" tabindex="-1"></a>    _run_snapshot(build_run_with_failures(tmp_path))</span>
 <span id="d1-cb2-16"><a href="#d1-cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> calls <span class="op">==</span> [<span class="dv">1</span>]</span>
 <span id="d1-cb2-17"><a href="#d1-cb2-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb2-18"><a href="#d1-cb2-18" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_excluded_store_exits_5_naming_it(monkeypatch, tmp_path, capsys):   <span class="co"># N3, D15</span></span>
-<span id="d1-cb2-19"><a href="#d1-cb2-19" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, omit_from_proof<span class="op">=</span>(<span class="st">&quot;img-a&quot;</span>,))</span>
+<span id="d1-cb2-18"><a href="#d1-cb2-18" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_unprojectable_store_exits_5_naming_it(monkeypatch, tmp_path, capsys):   <span class="co"># N3, D15, R2-C1</span></span>
+<span id="d1-cb2-19"><a href="#d1-cb2-19" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, unprojectable_stems<span class="op">=</span>(<span class="st">&quot;c&quot;</span>,))</span>
 <span id="d1-cb2-20"><a href="#d1-cb2-20" aria-hidden="true" tabindex="-1"></a>    code <span class="op">=</span> wait_for_run(out, <span class="op">**</span>no_live_jobs_published(monkeypatch, out))</span>
 <span id="d1-cb2-21"><a href="#d1-cb2-21" aria-hidden="true" tabindex="-1"></a>    text <span class="op">=</span> capsys.readouterr().out</span>
 <span id="d1-cb2-22"><a href="#d1-cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> code <span class="kw">is</span> RunExitCode.ENDED_UNPUBLISHED</span>
-<span id="d1-cb2-23"><a href="#d1-cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;leave out d1/img-a&quot;</span> <span class="kw">in</span> text <span class="kw">and</span> <span class="st">&quot;Fix or remove those stores&quot;</span> <span class="kw">in</span> text</span>
+<span id="d1-cb2-23"><a href="#d1-cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;leave out plate/c&quot;</span> <span class="kw">in</span> text <span class="kw">and</span> <span class="st">&quot;re-measuring them&quot;</span> <span class="kw">in</span> text</span>
 <span id="d1-cb2-24"><a href="#d1-cb2-24" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb2-25"><a href="#d1-cb2-25" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_stale_publication_exits_5_with_the_generic_variant(monkeypatch, tmp_path, capsys):</span>
-<span id="d1-cb2-26"><a href="#d1-cb2-26" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> bump_metadata_snapshot_digest(out)</span>
+<span id="d1-cb2-25"><a href="#d1-cb2-25" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_rolling_input_gap_exits_5_naming_no_store(monkeypatch, tmp_path, capsys):   <span class="co"># R2-C1</span></span>
+<span id="d1-cb2-26"><a href="#d1-cb2-26" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, late_stems<span class="op">=</span>(<span class="st">&quot;c&quot;</span>,))</span>
 <span id="d1-cb2-27"><a href="#d1-cb2-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> wait_for_run(out, <span class="op">**</span>no_live_jobs_published(monkeypatch, out)) <span class="kw">is</span> RunExitCode.ENDED_UNPUBLISHED</span>
-<span id="d1-cb2-28"><a href="#d1-cb2-28" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;no longer cover the run&quot;</span> <span class="kw">in</span> capsys.readouterr().out</span>
-<span id="d1-cb2-29"><a href="#d1-cb2-29" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb2-30"><a href="#d1-cb2-30" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_variant_needs_a_published_proof(monkeypatch, tmp_path, capsys):   <span class="co"># C1</span></span>
-<span id="d1-cb2-31"><a href="#d1-cb2-31" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> aggregate_publication_marker_path(out).unlink()</span>
-<span id="d1-cb2-32"><a href="#d1-cb2-32" aria-hidden="true" tabindex="-1"></a>    wait_for_run(out, <span class="op">**</span>no_live_jobs_published(monkeypatch, out))</span>
-<span id="d1-cb2-33"><a href="#d1-cb2-33" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;published nothing&quot;</span> <span class="kw">in</span> capsys.readouterr().out</span>
-<span id="d1-cb2-34"><a href="#d1-cb2-34" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb2-35"><a href="#d1-cb2-35" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_all_failed_run_exits_3(monkeypatch, tmp_path):                    <span class="co"># D16, Review Focus 1</span></span>
-<span id="d1-cb2-36"><a href="#d1-cb2-36" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;img-a&quot;</span>, <span class="st">&quot;img-b&quot;</span>))</span>
-<span id="d1-cb2-37"><a href="#d1-cb2-37" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> finished_run_outcome(out, <span class="va">None</span>) <span class="kw">is</span> RunExitCode.COMPLETE_WITH_FAILURES</span>
-<span id="d1-cb2-38"><a href="#d1-cb2-38" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> wait_for_run(out, <span class="op">**</span>no_live_jobs_published(monkeypatch, out)) <span class="kw">is</span> RunExitCode.COMPLETE_WITH_FAILURES</span>
-<span id="d1-cb2-39"><a href="#d1-cb2-39" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb2-40"><a href="#d1-cb2-40" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_accept_failures_stays_strict(monkeypatch, tmp_path):                  <span class="co"># D15</span></span>
-<span id="d1-cb2-41"><a href="#d1-cb2-41" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, omit_from_proof<span class="op">=</span>(<span class="st">&quot;img-a&quot;</span>,))</span>
-<span id="d1-cb2-42"><a href="#d1-cb2-42" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> wait_for_run(out, accept_failures<span class="op">=</span><span class="va">True</span>, <span class="op">**</span>no_live_jobs_published(monkeypatch, out)) <span class="kw">is</span> RunExitCode.ENDED_UNPUBLISHED</span>
-<span id="d1-cb2-43"><a href="#d1-cb2-43" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb2-44"><a href="#d1-cb2-44" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_proof_records_excluded_work_ids(tmp_path):                        <span class="co"># D15</span></span>
-<span id="d1-cb2-45"><a href="#d1-cb2-45" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, omit_from_proof<span class="op">=</span>(<span class="st">&quot;img-a&quot;</span>,))</span>
-<span id="d1-cb2-46"><a href="#d1-cb2-46" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> json.loads(aggregate_publication_marker_path(out).read_text())[<span class="st">&quot;excluded_work_ids&quot;</span>] <span class="op">==</span> [work_id_of(out, <span class="st">&quot;img-a&quot;</span>)]</span>
-<span id="d1-cb2-47"><a href="#d1-cb2-47" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb2-48"><a href="#d1-cb2-48" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_finished_run_outcome_ignores_liveness(tmp_path):</span>
-<span id="d1-cb2-49"><a href="#d1-cb2-49" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)</span>
-<span id="d1-cb2-50"><a href="#d1-cb2-50" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> finished_run_outcome(out, <span class="va">None</span>) <span class="kw">is</span> RunExitCode.COMPLETE_WITH_FAILURES</span></code></pre></div>
+<span id="d1-cb2-28"><a href="#d1-cb2-28" aria-hidden="true" tabindex="-1"></a>    text <span class="op">=</span> capsys.readouterr().out</span>
+<span id="d1-cb2-29"><a href="#d1-cb2-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;no longer cover the run&quot;</span> <span class="kw">in</span> text <span class="kw">and</span> <span class="st">&quot;plate/&quot;</span> <span class="kw">not</span> <span class="kw">in</span> text</span>
+<span id="d1-cb2-30"><a href="#d1-cb2-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb2-31"><a href="#d1-cb2-31" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_stale_publication_exits_5_with_the_gap_line(monkeypatch, tmp_path, capsys):</span>
+<span id="d1-cb2-32"><a href="#d1-cb2-32" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> bump_metadata_snapshot_digest(out)</span>
+<span id="d1-cb2-33"><a href="#d1-cb2-33" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> wait_for_run(out, <span class="op">**</span>no_live_jobs_published(monkeypatch, out)) <span class="kw">is</span> RunExitCode.ENDED_UNPUBLISHED</span>
+<span id="d1-cb2-34"><a href="#d1-cb2-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;no longer cover the run&quot;</span> <span class="kw">in</span> capsys.readouterr().out</span>
+<span id="d1-cb2-35"><a href="#d1-cb2-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb2-36"><a href="#d1-cb2-36" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_variant_needs_a_published_proof(monkeypatch, tmp_path, capsys):   <span class="co"># C1</span></span>
+<span id="d1-cb2-37"><a href="#d1-cb2-37" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> aggregate_publication_marker_path(out).unlink()</span>
+<span id="d1-cb2-38"><a href="#d1-cb2-38" aria-hidden="true" tabindex="-1"></a>    wait_for_run(out, <span class="op">**</span>no_live_jobs_published(monkeypatch, out))</span>
+<span id="d1-cb2-39"><a href="#d1-cb2-39" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;published nothing&quot;</span> <span class="kw">in</span> capsys.readouterr().out</span>
+<span id="d1-cb2-40"><a href="#d1-cb2-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb2-41"><a href="#d1-cb2-41" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_excluded_names_come_from_the_same_pass(monkeypatch, tmp_path):   <span class="co"># R2-I4</span></span>
+<span id="d1-cb2-42"><a href="#d1-cb2-42" aria-hidden="true" tabindex="-1"></a>    calls <span class="op">=</span> count_calls(monkeypatch, <span class="st">&quot;phenotypic.sdk_.resolve_run_state&quot;</span>)</span>
+<span id="d1-cb2-43"><a href="#d1-cb2-43" aria-hidden="true" tabindex="-1"></a>    snap <span class="op">=</span> _run_snapshot(build_run_with_failures(tmp_path, unprojectable_stems<span class="op">=</span>(<span class="st">&quot;c&quot;</span>,)))</span>
+<span id="d1-cb2-44"><a href="#d1-cb2-44" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> calls <span class="op">==</span> [<span class="dv">1</span>] <span class="kw">and</span> snap.excluded_stores <span class="op">==</span> (<span class="st">&quot;plate/c&quot;</span>,)</span>
+<span id="d1-cb2-45"><a href="#d1-cb2-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb2-46"><a href="#d1-cb2-46" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_all_failed_run_exits_3(monkeypatch, tmp_path):                    <span class="co"># D16, Review Focus 1</span></span>
+<span id="d1-cb2-47"><a href="#d1-cb2-47" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;a&quot;</span>, <span class="st">&quot;b&quot;</span>))</span>
+<span id="d1-cb2-48"><a href="#d1-cb2-48" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> finished_run_outcome(out, <span class="va">None</span>) <span class="kw">is</span> RunExitCode.COMPLETE_WITH_FAILURES</span>
+<span id="d1-cb2-49"><a href="#d1-cb2-49" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> wait_for_run(out, <span class="op">**</span>no_live_jobs_published(monkeypatch, out)) <span class="kw">is</span> RunExitCode.COMPLETE_WITH_FAILURES</span>
+<span id="d1-cb2-50"><a href="#d1-cb2-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb2-51"><a href="#d1-cb2-51" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_all_failed_slurm_run_exits_3(tmp_path):                           <span class="co"># D16 on SLURM, R2-M3</span></span>
+<span id="d1-cb2-52"><a href="#d1-cb2-52" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;a&quot;</span>, <span class="st">&quot;b&quot;</span>))</span>
+<span id="d1-cb2-53"><a href="#d1-cb2-53" aria-hidden="true" tabindex="-1"></a>    gen <span class="op">=</span> finish_slurm_generation_all_failed(out)   <span class="co"># the real finalizer path: no aggregate,</span></span>
+<span id="d1-cb2-54"><a href="#d1-cb2-54" aria-hidden="true" tabindex="-1"></a>                                                    <span class="co"># closes &quot;terminal_incomplete&quot; (_cli_checkpoint_handler.py:317-331, 395-401)</span></span>
+<span id="d1-cb2-55"><a href="#d1-cb2-55" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> _published(out, gen) <span class="kw">is</span> <span class="va">True</span></span>
+<span id="d1-cb2-56"><a href="#d1-cb2-56" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> finished_run_outcome(out, gen) <span class="kw">is</span> RunExitCode.COMPLETE_WITH_FAILURES</span>
+<span id="d1-cb2-57"><a href="#d1-cb2-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb2-58"><a href="#d1-cb2-58" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_accept_failures_stays_strict(monkeypatch, tmp_path):                  <span class="co"># D15</span></span>
+<span id="d1-cb2-59"><a href="#d1-cb2-59" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, unprojectable_stems<span class="op">=</span>(<span class="st">&quot;c&quot;</span>,))</span>
+<span id="d1-cb2-60"><a href="#d1-cb2-60" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> wait_for_run(out, accept_failures<span class="op">=</span><span class="va">True</span>, <span class="op">**</span>no_live_jobs_published(monkeypatch, out)) <span class="kw">is</span> RunExitCode.ENDED_UNPUBLISHED</span></code></pre></div>
 <p>Every existing <code>decide_wait_outcome</code> test keeps its assertions; those that reach rule 3 gain <code>finished_with_failures=&lt;N&gt;</code>.</p>
 <ul class="task-list">
 <li><input type="checkbox" disabled="" />
@@ -1186,7 +1314,7 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 <span id="d1-cb3-30"><a href="#d1-cb3-30" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> persisted_owner(out)[<span class="st">&quot;failed_images&quot;</span>] <span class="op">==</span> <span class="dv">1</span></span>
 <span id="d1-cb3-31"><a href="#d1-cb3-31" aria-hidden="true" tabindex="-1"></a></span>
 <span id="d1-cb3-32"><a href="#d1-cb3-32" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_all_failed_cli_run_is_claimable_for_retry_failures(tmp_path):      <span class="co"># D16</span></span>
-<span id="d1-cb3-33"><a href="#d1-cb3-33" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;img-a&quot;</span>, <span class="st">&quot;img-b&quot;</span>))</span>
+<span id="d1-cb3-33"><a href="#d1-cb3-33" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;a&quot;</span>, <span class="st">&quot;b&quot;</span>))</span>
 <span id="d1-cb3-34"><a href="#d1-cb3-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> RunRegistry._foreign_run_conflict(out) <span class="kw">is</span> <span class="va">None</span></span>
 <span id="d1-cb3-35"><a href="#d1-cb3-35" aria-hidden="true" tabindex="-1"></a></span>
 <span id="d1-cb3-36"><a href="#d1-cb3-36" aria-hidden="true" tabindex="-1"></a><span class="at">@pytest.mark.parametrize</span>(<span class="st">&quot;status&quot;</span>, <span class="bu">sorted</span>(_RUN_STATUSES))</span>
@@ -1205,7 +1333,7 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 <span id="d1-cb3-49"><a href="#d1-cb3-49" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> reg.allocate(mode<span class="op">=</span><span class="st">&quot;local&quot;</span>, output_dir<span class="op">=</span>out, rel_path<span class="op">=</span>..., command_digest<span class="op">=</span><span class="st">&quot;x&quot;</span>, status<span class="op">=</span><span class="st">&quot;queued&quot;</span>)</span>
 <span id="d1-cb3-50"><a href="#d1-cb3-50" aria-hidden="true" tabindex="-1"></a></span>
 <span id="d1-cb3-51"><a href="#d1-cb3-51" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_failed_image_beside_an_unresolved_image_refuses(tmp_path):      <span class="co"># split of :363-390</span></span>
-<span id="d1-cb3-52"><a href="#d1-cb3-52" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> drop_success_record(out, <span class="st">&quot;img-a&quot;</span>)</span>
+<span id="d1-cb3-52"><a href="#d1-cb3-52" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> drop_success_record(out, <span class="st">&quot;a&quot;</span>)</span>
 <span id="d1-cb3-53"><a href="#d1-cb3-53" aria-hidden="true" tabindex="-1"></a>    msg <span class="op">=</span> RunRegistry._foreign_run_conflict(out)</span>
 <span id="d1-cb3-54"><a href="#d1-cb3-54" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;unfinished run with 1 failed image(s)&quot;</span> <span class="kw">in</span> msg <span class="kw">and</span> <span class="st">&quot;from the CLI&quot;</span> <span class="kw">in</span> msg   <span class="co"># N7</span></span>
 <span id="d1-cb3-55"><a href="#d1-cb3-55" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;non-GUI&quot;</span> <span class="kw">not</span> <span class="kw">in</span> msg</span>
@@ -1391,6 +1519,7 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 </section><section class="doc"><h2 class="doctitle" id="d2-top">PA2 · The results viewer reads per-pipeline tables</h2><div class="meta"><p><strong>Spec:</strong> §3.3 (reds #8–13), PA2</p>
 </div><div class="docsrc">pa2-viewer-tables.md</div><p><strong>Goal:</strong> The Colony picker and the measurement routes read a v2 store's latest measuring run and still read a v1 store; reds #8–13 are green.</p>
 <p><strong>Depends on:</strong> nothing. Runs as <strong>Lane V</strong> beside PA1, in its own worktree.</p>
+<p><strong>Helpers stay local (R2-M1).</strong> <code>add_second_measuring_run</code>, <code>add_grid_only_run</code>, <code>rewrite_latest_table_with_zero_rows</code>, <code>run_from_fixture</code> and <code>v1_pairs</code> are written in the two test modules that use them (<code>test_measurement_source.py</code>, <code>test_zarr_routes.py</code>), never in <code>tests/_output_layout.py</code>, which PA1 T1 edits on the main line. A module-local <code>add_grid_only_run</code> already exists in <code>tests/unit/sdk_/test_tables_v2_state_readers.py:29</code>; copy its approach, do not import across test modules.</p>
 <h3 id="d2-task-1-_store_and_identity-through-declared_measurement_table_path-c5">Task 1: <code>_store_and_identity</code> through <code>declared_measurement_table_path</code> (C5)</h3>
 <p><strong>Files:</strong></p>
 <ul>
@@ -1490,12 +1619,15 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 <span id="d3-cb1-25"><a href="#d3-cb1-25" aria-hidden="true" tabindex="-1"></a></span>
 <span id="d3-cb1-26"><a href="#d3-cb1-26" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_pre_pa8_proof_still_validates_after_the_csv_goes(tmp_path):    <span class="co"># I7</span></span>
 <span id="d3-cb1-27"><a href="#d3-cb1-27" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_complete_run(tmp_path)</span>
-<span id="d3-cb1-28"><a href="#d3-cb1-28" aria-hidden="true" tabindex="-1"></a>    inject_descriptor(out, <span class="st">&quot;measurements_csv&quot;</span>, measurements_csv_path(out))   <span class="co"># the real bytes&#39; size and sha,</span></span>
-<span id="d3-cb1-29"><a href="#d3-cb1-29" aria-hidden="true" tabindex="-1"></a>    measurements_csv_path(out).unlink()                                       <span class="co"># as a pre-PA8 proof records them</span></span>
-<span id="d3-cb1-30"><a href="#d3-cb1-30" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> aggregate_proof_is_current(out)</span>
-<span id="d3-cb1-31"><a href="#d3-cb1-31" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb1-32"><a href="#d3-cb1-32" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_dashboard_download_names_the_tsv(...): <span class="cf">assert</span> <span class="st">&quot;deliverables/measurements.tsv&quot;</span> <span class="kw">in</span> html</span>
-<span id="d3-cb1-33"><a href="#d3-cb1-33" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_readme_lists_no_measurements_csv(...): ...</span></code></pre></div>
+<span id="d3-cb1-28"><a href="#d3-cb1-28" aria-hidden="true" tabindex="-1"></a>    write_measurements_mirror(out, mirror_frame(out), csv<span class="op">=</span><span class="va">True</span>)   <span class="co"># a real CSV for the descriptor</span></span>
+<span id="d3-cb1-29"><a href="#d3-cb1-29" aria-hidden="true" tabindex="-1"></a>    <span class="co"># The one hand-edit of a proof in this plan, said so in the test: after T1 no writer can</span></span>
+<span id="d3-cb1-30"><a href="#d3-cb1-30" aria-hidden="true" tabindex="-1"></a>    <span class="co"># produce a pre-PA8 proof, so the descriptor is injected (plan re-review, I7 note).</span></span>
+<span id="d3-cb1-31"><a href="#d3-cb1-31" aria-hidden="true" tabindex="-1"></a>    inject_descriptor(out, <span class="st">&quot;measurements_csv&quot;</span>, measurements_csv_path(out))   <span class="co"># the real bytes&#39; size and sha,</span></span>
+<span id="d3-cb1-32"><a href="#d3-cb1-32" aria-hidden="true" tabindex="-1"></a>    measurements_csv_path(out).unlink()                                       <span class="co"># as a pre-PA8 proof records them</span></span>
+<span id="d3-cb1-33"><a href="#d3-cb1-33" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> aggregate_proof_is_current(out)</span>
+<span id="d3-cb1-34"><a href="#d3-cb1-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb1-35"><a href="#d3-cb1-35" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_dashboard_download_names_the_tsv(...): <span class="cf">assert</span> <span class="st">&quot;deliverables/measurements.tsv&quot;</span> <span class="kw">in</span> html</span>
+<span id="d3-cb1-36"><a href="#d3-cb1-36" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_readme_lists_no_measurements_csv(...): ...</span></code></pre></div>
 <p>Red #7's set becomes <code>{"master_parquet", "measurements_tsv", "measurements_parquet"}</code> (the gate log shows those plus <code>measurements_csv</code> today; no <code>metrics_json</code>/<code>schema_json</code>).</p>
 <ul class="task-list">
 <li><input type="checkbox" disabled="" />
@@ -1753,7 +1885,7 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 <ul>
 <li><code>run_permits_mutation(state: RunState | None, output_dir: Path | None) -&gt; bool</code> in <code>_mutation_guard.py</code>: <code>True</code> for <code>state is None</code> (bundle), <code>completion == "complete"</code>, or a confirmed verdict over <strong>that</strong> <code>state</code> (N1).</li>
 <li><code>authorize</code> calls it on the bound state, the fresh deep state and the verified deep state.</li>
-<li><code>OutputMutationReceipt</code> gains <code>failed_images: int | None</code>, recorded beside <code>run_identity_digest</code> [spec call 14]; a fresh verdict whose N differs from the bound one refuses.</li>
+<li><code>OutputMutationReceipt</code> gains <code>failed_images: int | None</code>, recorded beside <code>run_identity_digest</code> [spec call 14]; a fresh verdict whose N differs from the bound one refuses with "… blocked: the failed image count changed from N to M after this snapshot was bound. Refresh Results and Analysis."</li>
 <li><code>load_or_scan_processing_inventory</code>: <code>reusable</code> uses the same predicate.</li>
 </ul></li>
 </ul>
@@ -1768,41 +1900,48 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 <span id="d5-cb1-5"><a href="#d5-cb1-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="d5-cb1-6"><a href="#d5-cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_guard_refuses_an_unresolved_failed_run(tmp_path): ...        <span class="co"># drop_success_record</span></span>
 <span id="d5-cb1-7"><a href="#d5-cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_guard_refuses_a_stale_publication(tmp_path): ...             <span class="co"># bump_metadata_snapshot_digest</span></span>
-<span id="d5-cb1-8"><a href="#d5-cb1-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_verdict_that_flips_between_bind_and_write_is_refused(tmp_path):</span>
-<span id="d5-cb1-9"><a href="#d5-cb1-9" aria-hidden="true" tabindex="-1"></a>    root <span class="op">=</span> output_root_over(out :<span class="op">=</span> build_run_with_failures(tmp_path))</span>
-<span id="d5-cb1-10"><a href="#d5-cb1-10" aria-hidden="true" tabindex="-1"></a>    publish_image_success_for(out, <span class="st">&quot;img-b&quot;</span>)  <span class="co"># only the verdict flips: the source set moves,</span></span>
-<span id="d5-cb1-11"><a href="#d5-cb1-11" aria-hidden="true" tabindex="-1"></a>                                             <span class="co"># the identity digest and the processing products do not (I9)</span></span>
-<span id="d5-cb1-12"><a href="#d5-cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> pytest.raises(OutputMutationBlocked, match<span class="op">=</span><span class="st">&quot;run state is failed&quot;</span>):</span>
-<span id="d5-cb1-13"><a href="#d5-cb1-13" aria-hidden="true" tabindex="-1"></a>        OutputMutationGuard(root, gen).authorize(<span class="st">&quot;curate&quot;</span>, presented_generation<span class="op">=</span>gen)</span>
-<span id="d5-cb1-14"><a href="#d5-cb1-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d5-cb1-15"><a href="#d5-cb1-15" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_confirmed_run_gets_an_exhaustive_inventory(tmp_path):</span>
-<span id="d5-cb1-16"><a href="#d5-cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> output_root_over(build_run_with_failures(tmp_path)).has_exhaustive_processing_inventory</span>
-<span id="d5-cb1-17"><a href="#d5-cb1-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d5-cb1-18"><a href="#d5-cb1-18" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_read_only_diagnostic_is_gone_for_a_confirmed_run(tmp_path):</span>
-<span id="d5-cb1-19"><a href="#d5-cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> output_read_only_diagnostic(output_root_over(build_run_with_failures(tmp_path))) <span class="kw">is</span> <span class="va">None</span></span>
-<span id="d5-cb1-20"><a href="#d5-cb1-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d5-cb1-21"><a href="#d5-cb1-21" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_curation_write_keeps_the_verdict_and_the_fence(tmp_path):</span>
-<span id="d5-cb1-22"><a href="#d5-cb1-22" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> before <span class="op">=</span> resolve_run_state(out, depth<span class="op">=</span><span class="st">&quot;deep&quot;</span>)</span>
-<span id="d5-cb1-23"><a href="#d5-cb1-23" aria-hidden="true" tabindex="-1"></a>    curate_one_colony(out)                                    <span class="co"># test file&#39;s _curate_one_colony (:57)</span></span>
-<span id="d5-cb1-24"><a href="#d5-cb1-24" aria-hidden="true" tabindex="-1"></a>    after <span class="op">=</span> resolve_run_state(out, depth<span class="op">=</span><span class="st">&quot;deep&quot;</span>)</span>
-<span id="d5-cb1-25"><a href="#d5-cb1-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> aggregate_proof_is_current(out)</span>
-<span id="d5-cb1-26"><a href="#d5-cb1-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(after, out) <span class="op">==</span> <span class="dv">1</span></span>
-<span id="d5-cb1-27"><a href="#d5-cb1-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> (after.identity.digest(), after.diagnostics) <span class="op">==</span> (before.identity.digest(), before.diagnostics)</span>
-<span id="d5-cb1-28"><a href="#d5-cb1-28" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> enforced_descriptors_match(out, {<span class="st">&quot;master_parquet&quot;</span>, <span class="st">&quot;metrics_json&quot;</span>, <span class="st">&quot;schema_json&quot;</span>})</span>
-<span id="d5-cb1-29"><a href="#d5-cb1-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_proof(out) <span class="kw">is</span> <span class="va">None</span></span>
-<span id="d5-cb1-30"><a href="#d5-cb1-30" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d5-cb1-31"><a href="#d5-cb1-31" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_cli_rerun_after_curation_reseeds_and_the_gui_reapplies(tiny_inputs_one_bad, tiny_pipeline_file, tmp_path):   <span class="co"># D11</span></span>
-<span id="d5-cb1-32"><a href="#d5-cb1-32" aria-hidden="true" tabindex="-1"></a>    <span class="co"># a REAL run: tests/_tiny_run.py&#39;s tiny_inputs_one_bad (:91) gives one terminal failure</span></span>
-<span id="d5-cb1-33"><a href="#d5-cb1-33" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span><span class="op">;</span> argv <span class="op">=</span> [<span class="st">&quot;--pipeline&quot;</span>, <span class="bu">str</span>(tiny_pipeline_file), <span class="st">&quot;--input&quot;</span>, <span class="bu">str</span>(tiny_inputs_one_bad), <span class="st">&quot;--output&quot;</span>, <span class="bu">str</span>(out)]</span>
-<span id="d5-cb1-34"><a href="#d5-cb1-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_cli(argv).exit_code <span class="op">==</span> RunExitCode.COMPLETE_WITH_FAILURES     <span class="co"># run_cli, :191</span></span>
-<span id="d5-cb1-35"><a href="#d5-cb1-35" aria-hidden="true" tabindex="-1"></a>    removed <span class="op">=</span> curate_remove_one(out)</span>
-<span id="d5-cb1-36"><a href="#d5-cb1-36" aria-hidden="true" tabindex="-1"></a>    result <span class="op">=</span> run_cli(argv)</span>
-<span id="d5-cb1-37"><a href="#d5-cb1-37" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> result.exit_code <span class="op">==</span> RunExitCode.COMPLETE_WITH_FAILURES</span>
-<span id="d5-cb1-38"><a href="#d5-cb1-38" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> curation_labels_path(out).is_file() <span class="kw">and</span> errors_dir(out).is_dir()</span>
-<span id="d5-cb1-39"><a href="#d5-cb1-39" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> removed <span class="kw">in</span> mirror_keys(out)                         <span class="co"># reseeded uncurated</span></span>
-<span id="d5-cb1-40"><a href="#d5-cb1-40" aria-hidden="true" tabindex="-1"></a>    viewer <span class="op">=</span> refresh_viewer(out)                               <span class="co"># required: the fingerprint moved</span></span>
-<span id="d5-cb1-41"><a href="#d5-cb1-41" aria-hidden="true" tabindex="-1"></a>    curate_any(viewer)                                         <span class="co"># (_curation_labels.py:773-800)</span></span>
-<span id="d5-cb1-42"><a href="#d5-cb1-42" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> removed <span class="kw">not</span> <span class="kw">in</span> mirror_keys(out)</span></code></pre></div>
+<span id="d5-cb1-8"><a href="#d5-cb1-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_verdict_that_flips_between_bind_and_write_is_refused(tmp_path):   <span class="co"># I9, R2-I3</span></span>
+<span id="d5-cb1-9"><a href="#d5-cb1-9" aria-hidden="true" tabindex="-1"></a>    root <span class="op">=</span> output_root_over(out :<span class="op">=</span> build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;b&quot;</span>, <span class="st">&quot;c&quot;</span>)))</span>
+<span id="d5-cb1-10"><a href="#d5-cb1-10" aria-hidden="true" tabindex="-1"></a>    publish_image_success_for(out, <span class="st">&quot;b&quot;</span>)      <span class="co"># c still failed: completion STAYS &quot;failed&quot;; only the</span></span>
+<span id="d5-cb1-11"><a href="#d5-cb1-11" aria-hidden="true" tabindex="-1"></a>                                             <span class="co"># source set moves, so only the verdict flips</span></span>
+<span id="d5-cb1-12"><a href="#d5-cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> resolve_run_state(out, depth<span class="op">=</span><span class="st">&quot;deep&quot;</span>).completion <span class="op">==</span> <span class="st">&quot;failed&quot;</span></span>
+<span id="d5-cb1-13"><a href="#d5-cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> pytest.raises(OutputMutationBlocked, match<span class="op">=</span><span class="st">&quot;run state is failed&quot;</span>):</span>
+<span id="d5-cb1-14"><a href="#d5-cb1-14" aria-hidden="true" tabindex="-1"></a>        OutputMutationGuard(root, gen).authorize(<span class="st">&quot;curate&quot;</span>, presented_generation<span class="op">=</span>gen)</span>
+<span id="d5-cb1-15"><a href="#d5-cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d5-cb1-16"><a href="#d5-cb1-16" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_fresh_verdict_whose_n_differs_refuses(tmp_path, monkeypatch):   <span class="co"># spec call 14, R2-I3</span></span>
+<span id="d5-cb1-17"><a href="#d5-cb1-17" aria-hidden="true" tabindex="-1"></a>    root <span class="op">=</span> output_root_over(build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;b&quot;</span>, <span class="st">&quot;c&quot;</span>)))   <span class="co"># bound N = 2</span></span>
+<span id="d5-cb1-18"><a href="#d5-cb1-18" aria-hidden="true" tabindex="-1"></a>    monkeypatch.<span class="bu">setattr</span>(guard_module, <span class="st">&quot;run_finished_with_failures&quot;</span>, <span class="kw">lambda</span> state, out: <span class="dv">1</span>)  <span class="co"># fresh N = 1</span></span>
+<span id="d5-cb1-19"><a href="#d5-cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> pytest.raises(OutputMutationBlocked, match<span class="op">=</span><span class="st">&quot;failed image count changed&quot;</span>):</span>
+<span id="d5-cb1-20"><a href="#d5-cb1-20" aria-hidden="true" tabindex="-1"></a>        OutputMutationGuard(root, gen).authorize(<span class="st">&quot;curate&quot;</span>, presented_generation<span class="op">=</span>gen)</span>
+<span id="d5-cb1-21"><a href="#d5-cb1-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d5-cb1-22"><a href="#d5-cb1-22" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_confirmed_run_gets_an_exhaustive_inventory(tmp_path):</span>
+<span id="d5-cb1-23"><a href="#d5-cb1-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> output_root_over(build_run_with_failures(tmp_path)).has_exhaustive_processing_inventory</span>
+<span id="d5-cb1-24"><a href="#d5-cb1-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d5-cb1-25"><a href="#d5-cb1-25" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_read_only_diagnostic_is_gone_for_a_confirmed_run(tmp_path):</span>
+<span id="d5-cb1-26"><a href="#d5-cb1-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> output_read_only_diagnostic(output_root_over(build_run_with_failures(tmp_path))) <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d5-cb1-27"><a href="#d5-cb1-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d5-cb1-28"><a href="#d5-cb1-28" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_curation_write_keeps_the_verdict_and_the_fence(tmp_path):</span>
+<span id="d5-cb1-29"><a href="#d5-cb1-29" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path)<span class="op">;</span> before <span class="op">=</span> resolve_run_state(out, depth<span class="op">=</span><span class="st">&quot;deep&quot;</span>)</span>
+<span id="d5-cb1-30"><a href="#d5-cb1-30" aria-hidden="true" tabindex="-1"></a>    curate_one_colony(out)                                    <span class="co"># test file&#39;s _curate_one_colony (:57)</span></span>
+<span id="d5-cb1-31"><a href="#d5-cb1-31" aria-hidden="true" tabindex="-1"></a>    after <span class="op">=</span> resolve_run_state(out, depth<span class="op">=</span><span class="st">&quot;deep&quot;</span>)</span>
+<span id="d5-cb1-32"><a href="#d5-cb1-32" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> aggregate_proof_is_current(out)</span>
+<span id="d5-cb1-33"><a href="#d5-cb1-33" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(after, out) <span class="op">==</span> <span class="dv">1</span></span>
+<span id="d5-cb1-34"><a href="#d5-cb1-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> (after.identity.digest(), after.diagnostics) <span class="op">==</span> (before.identity.digest(), before.diagnostics)</span>
+<span id="d5-cb1-35"><a href="#d5-cb1-35" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> enforced_descriptors_match(out, {<span class="st">&quot;master_parquet&quot;</span>, <span class="st">&quot;metrics_json&quot;</span>, <span class="st">&quot;schema_json&quot;</span>})</span>
+<span id="d5-cb1-36"><a href="#d5-cb1-36" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_proof(out) <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d5-cb1-37"><a href="#d5-cb1-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d5-cb1-38"><a href="#d5-cb1-38" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_cli_rerun_after_curation_reseeds_and_the_gui_reapplies(tiny_inputs_one_bad, tiny_pipeline_file, tmp_path):   <span class="co"># D11</span></span>
+<span id="d5-cb1-39"><a href="#d5-cb1-39" aria-hidden="true" tabindex="-1"></a>    <span class="co"># a REAL run: tests/_tiny_run.py&#39;s tiny_inputs_one_bad (:91) gives one terminal failure</span></span>
+<span id="d5-cb1-40"><a href="#d5-cb1-40" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span><span class="op">;</span> argv <span class="op">=</span> [<span class="st">&quot;--pipeline&quot;</span>, <span class="bu">str</span>(tiny_pipeline_file), <span class="st">&quot;--input&quot;</span>, <span class="bu">str</span>(tiny_inputs_one_bad), <span class="st">&quot;--output&quot;</span>, <span class="bu">str</span>(out)]</span>
+<span id="d5-cb1-41"><a href="#d5-cb1-41" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_cli(argv).exit_code <span class="op">==</span> RunExitCode.COMPLETE_WITH_FAILURES     <span class="co"># run_cli, :191</span></span>
+<span id="d5-cb1-42"><a href="#d5-cb1-42" aria-hidden="true" tabindex="-1"></a>    removed <span class="op">=</span> curate_remove_one(out)</span>
+<span id="d5-cb1-43"><a href="#d5-cb1-43" aria-hidden="true" tabindex="-1"></a>    result <span class="op">=</span> run_cli(argv)</span>
+<span id="d5-cb1-44"><a href="#d5-cb1-44" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> result.exit_code <span class="op">==</span> RunExitCode.COMPLETE_WITH_FAILURES</span>
+<span id="d5-cb1-45"><a href="#d5-cb1-45" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> curation_labels_path(out).is_file() <span class="kw">and</span> errors_dir(out).is_dir()</span>
+<span id="d5-cb1-46"><a href="#d5-cb1-46" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> removed <span class="kw">in</span> mirror_keys(out)                         <span class="co"># reseeded uncurated</span></span>
+<span id="d5-cb1-47"><a href="#d5-cb1-47" aria-hidden="true" tabindex="-1"></a>    viewer <span class="op">=</span> refresh_viewer(out)                               <span class="co"># required: the fingerprint moved</span></span>
+<span id="d5-cb1-48"><a href="#d5-cb1-48" aria-hidden="true" tabindex="-1"></a>    curate_any(viewer)                                         <span class="co"># (_curation_labels.py:773-800)</span></span>
+<span id="d5-cb1-49"><a href="#d5-cb1-49" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> removed <span class="kw">not</span> <span class="kw">in</span> mirror_keys(out)</span></code></pre></div>
 <ul class="task-list">
 <li><input type="checkbox" disabled="" />
 <strong>Step 2: Run the test files listed; the new tests fail.</strong></li>
@@ -2064,7 +2203,7 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 <ul>
 <li>Modify: <code>src/phenotypic/_gui/run_console/_state.py</code> (<code>cli_mode</code> field, <code>run_state_from_json</code>/<code>run_state_to_json</code> (<code>:121, 151</code>), <code>to_argv</code>); <code>_ids.py</code> (<code>RC_RADIO_CLI_MODE = "rc-radio-cli-mode"</code>); <code>_form.py</code> (selector beside <code>rc-radio-mode</code>, <code>_ids.py:105</code>).</li>
 <li>Modify: <code>src/phenotypic/_gui/run_console/_callbacks.py</code>: slot visibility and disabling; <code>update_run_disabled</code> (<code>:2839-2855</code>) and the Validate button; the launch seam's validate arm (<code>:2063-2066</code>); <code>_launch_refusal</code>'s measure hook (PB2).</li>
-<li>Modify: <code>src/phenotypic/_cli/_cli_reference.py</code> and <code>src/phenotypic/phenotypicCLI.py</code>: move <code>_reference_operation_paths_for</code> (<code>phenotypicCLI.py:739</code>) and <code>_refuse_measuring_reference_pipeline</code> (<code>:761-773</code>) into <code>_cli_reference.py</code>, which the CLI then imports; add <code>measure_reference_refusal</code> there. A run-console callback then never imports the 4,800-line CLI module (Minor 13).</li>
+<li>Modify: <code>src/phenotypic/_cli/_cli_reference.py</code> and <code>src/phenotypic/phenotypicCLI.py</code>: move <code>_reference_operation_paths_for</code> (<code>phenotypicCLI.py:739</code>) and <code>_refuse_measuring_reference_pipeline</code> (<code>:761-773</code>) into <code>_cli_reference.py</code>, which the CLI then imports; add <code>measure_reference_refusal</code> there. A run-console callback then never imports the 4,800-line CLI module (Minor 13). Before the move, <code>grep -rn '_refuse_measuring_reference_pipeline\|_reference_operation_paths_for' tests/</code> on the rebased #282 tree: today there is no monkeypatch target; leave a re-export in <code>phenotypicCLI.py</code> only if one has appeared (R2-M6).</li>
 <li>Test: <code>tests/unit/gui/run_console/test_state.py</code>, <code>tests/integration/gui/test_run_console_callbacks.py</code>, <code>tests/integration/cli/test_gui_measure_argv.py</code> (new).</li>
 </ul>
 <p><strong>Interfaces:</strong></p>

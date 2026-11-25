@@ -72,6 +72,9 @@ def test_the_sweep_still_refuses_error_analysis_and_metadata(tmp_path, stem):
 
 def test_a_pre_pa8_proof_still_validates_after_the_csv_goes(tmp_path):    # I7
     out = build_complete_run(tmp_path)
+    write_measurements_mirror(out, mirror_frame(out), csv=True)   # a real CSV for the descriptor
+    # The one hand-edit of a proof in this plan, said so in the test: after T1 no writer can
+    # produce a pre-PA8 proof, so the descriptor is injected (plan re-review, I7 note).
     inject_descriptor(out, "measurements_csv", measurements_csv_path(out))   # the real bytes' size and sha,
     measurements_csv_path(out).unlink()                                       # as a pre-PA8 proof records them
     assert aggregate_proof_is_current(out)
