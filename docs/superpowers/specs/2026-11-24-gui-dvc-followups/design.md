@@ -24,8 +24,7 @@
 drafted here but not opened. The user's answers the same day widened both PRs (§10).
 
 Each judgement call of mine is marked **[call]** and collected in §9. The user's decisions
-are cited as **D1–D8** and **D10–D13** (§10; D9 is not used). New questions only the user can
-answer are in §11.
+are cited as **D1–D14** (§10). §11 records that no question is open.
 
 ---
 
@@ -54,9 +53,10 @@ It also:
 - Stage-4 refusals shown the way the staged-GPU refusal already is;
 - `--mode measure` (D6).
 
-**Sequencing (D5).**
+**Sequencing (D5, D9).**
 1. **Now.** PR A is built on #281's branch.
-2. **#281 merges to `main` first.** PR A targets `main` after that.
+2. **#281 is held until PR A is reviewed and ready (D9), then merges to `main`.** PR A
+   targets `main` and merges right after it.
 3. **Before PR A is opened:**
    - `git fetch origin` and rebase `feat/gui-dvc-followups` onto the latest `origin/main`,
      which will by then contain #281;
@@ -75,9 +75,9 @@ It also:
 5. **PR B is cut only after step 4.** PR B needs PA1, because a Stage-4 SLURM submission
    exits `4` like any other, and it needs PA4's verdict (PB5).
 
-This reverses #281's own merge gate ("#281 does not merge to `main` before #283 fixes
-these", #281 spec §2.2). Between the two merges `main` carries the breaks in §3. See §7 R9
-and §11 Q1.
+#281's own merge gate says "#281 does not merge to `main` before #283 fixes these" (#281
+spec §2.2). D9 keeps its intent: the two merge back to back, so `main` carries the §3 breaks
+only for the gap between the merges. See §7 R9 and D9.
 
 ---
 
@@ -416,15 +416,23 @@ literal codes appear in GUI code.
 
 | Exit | Meaning | What `submit_slurm` does |
 |---|---|---|
-| `SUBMITTED` (4) | queued | The normal path. No `ambiguous_error`. Read `read_submitted_job_set(output_dir)`. When `None`, call `_reconcile_submission(output_dir, cancel_inactive=False)` once. If that also finds nothing, raise one error naming "SUBMITTED". Return `reconciled=False` unless reconciliation found the jobs. |
+| `SUBMITTED` (4) | queued | The normal path. No `ambiguous_error`. Read `read_submitted_job_set(output_dir)`. When `None`, call `_reconcile_submission(output_dir, cancel_inactive=False)` once; an inactive fence then returns "no jobs" without reconciling (N2). If that also finds nothing, raise one error naming "SUBMITTED". Return `reconciled=False` unless reconciliation found the jobs. |
 | `COMPLETE` (0) / `COMPLETE_WITH_FAILURES` (3) | the CLI finished in-process; nothing was submitted (§3.1) | Return a new `SlurmFinishedWithoutSubmission(returncode, output_dir, stdout, stderr)`. Read no job set, bind no generation, never reconcile or cancel. |
-| `2` (usage error) | refused before anything was submitted | Reconcile with `cancel_inactive=False`, so any durable job of *this* generation is still attached, then raise the refusal with the CLI's stderr. Never cancel. **[call]** (review Minor 15) |
+| `2` (usage error) | refused before anything was submitted | **Does not reconcile.** Raise the refusal with the CLI's stderr; never cancel, never bind. A usage error is raised in the CLI's read-only half, before any submission (`_cli/CLAUDE.md`, "The run preflight, and the read-only/mutating split"), so there is no job of this generation to attach. **[call]** (review Minor 15, N2) |
 | `-1` (timeout), stream error, any other code | ambiguous | Unchanged: reconcile with `cancel_inactive=True`, then raise unless durable jobs prove a submission. |
 
-**The no-cancel flag (I5).** `_reconcile_submission` gains a keyword `cancel_inactive: bool`.
-Only the timeout and stream-error arms pass `True`. Today the inactive→cancel branch
-(`_slurm.py:652-656`) is reached from every caller, including the clean-exit arm
-(`:837-841`); with the flag, exit `4` and exit `2` can never reach it.
+**The no-cancel flag (I5, N2).** `_reconcile_submission` gains a keyword `cancel_inactive: bool`.
+- **`True`** (the timeout and stream-error arms only): an inactive fence is cancelled as today
+  (`_slurm.py:652-656`).
+- **`False`** (exit `4` with no job set): an inactive fence returns "no jobs" at once, **without
+  reconciling its ledger or scheduler comments**. Falling through instead would reconcile
+  whatever previous generation the fence names, return its unresolved tokens, raise
+  `SlurmSubmitPending` (`:844-856`), and let the callback bind the GUI record to that **old**
+  generation (`run_console/_callbacks.py:1048-1084`).
+- **Exit `2`** never calls `_reconcile_submission`.
+
+Today the inactive→cancel branch is reached from every caller, including the clean-exit arm
+(`:837-841`); with the flag, exit `4` and exit `2` can never reach it, and neither can bind.
 
 **The 0/3 result (I6).**
 - **Type.** `SlurmFinishedWithoutSubmission` is its own frozen dataclass, **not** a subclass
@@ -472,6 +480,9 @@ earlier generation's job set is still on disk (§3.1).
   terminal record (`complete` / `complete_with_failures`). One synthetic exit-3 test is
   enough, because the GUI rarely reaches it (§3.1; review Minor 9).
 - A `cancelling` record meeting a 0/3 result becomes `cancelled`.
+- **No stale binding (N2).** An inactive previous generation with an unresolved `intent` row,
+  plus exit 2 or exit 4 with no job set: `SlurmSubmitPending` is never raised, and the GUI
+  record is never bound to that generation.
 - **Exit 2.** `test_submit_slurm_raises_on_non_zero_exit` keeps its message assertions.
   `test_abnormal_exit_cancels_recovered_inactive_generation` is changed to pin the opposite:
   exit 2 never calls `cancel_generation`. A new test pins the cancel on the **timeout** arm,
@@ -555,9 +566,11 @@ It is shown in four places:
   two literals, so `test_every_completion_literal_has_a_badge` still binds it.
 
 **The verdict: one sdk_ function, the failed-run twin of rule 1 (C1, I1).**
-`run_finished_with_failures(output_dir) -> int | None`, in `sdk_/_run_state.py` beside
-`_run_proof_covers_current_inventory` (`:1464-1541`) and exported from `phenotypic.sdk_`. It
-returns N, or `None`, from one `resolve_run_state` pass and the aggregate proof:
+`run_finished_with_failures(state: RunState, output_dir: Path) -> int | None`, in
+`sdk_/_run_state.py` beside `_run_proof_covers_current_inventory` (`:1464-1541`) and exported
+from `phenotypic.sdk_` (N1). It returns N, or `None`, from **the caller's own `RunState`**
+and the aggregate proof beside it. It does no `resolve_run_state` of its own, so each caller
+judges the state it already resolved, at its own depth:
 
 1. **Completion.** `completion == "failed"`: no live authority, and at least one image
    failed (`:1922-1934`).
@@ -574,32 +587,55 @@ returns N, or `None`, from one `resolve_run_state` pass and the aggregate proof:
    - `proof["source_set_digest"] == canonical_digest(sorted(verified work ids))`, and
      `proof["source_image_count"] == len(verified)`. The aggregate proof carries both
      directly (`_cli_completion.py:1258-1259`).
-5. **A process run** publishes no aggregate proof. For it, (3) and (4) are replaced by
-   rule 1's process arm: the run's `process_only_layer` is recorded, and no fence of it is
-   cancelled. **[call]** This mirrors `decide_wait_outcome` rule 4 (`_cli_wait.py:356-364`).
+5. **Not a process run.** A run whose config records `process_only_layer` returns `None` (N4).
+   No caller needs a process arm: the waiter keeps its own rule 4 (`_cli_wait.py:356-364`),
+   the GUI has no process mode, and the viewer does not open process trees. A process tree
+   with failures therefore stays unclaimable (PA11), which is right, because the CLI would
+   refuse a full-mode continuation of it as incompatible.
 
 The comparisons in (4) are shared with `_run_proof_covers_current_inventory` through one
 private helper, so the two arms cannot drift. **[call]**
 
-**Who calls it:**
+**Who calls it, and with which state (N1):**
 - **GUI, generation-less** (these import from `phenotypic.sdk_` only, per the readers rule):
-  - `observe_local_exit`, for a local exit `3`;
-  - `observe_finished_without_submission` (PA1);
-  - `_rehydrated_status` (`shell/_runs_registry.py:1026-1104`);
-  - the snapshot badge;
-  - the claim gate (PA11);
-  - the write-authority checks (PA10).
-- **The waiter.** `_cli_wait.decide_wait_outcome` (`:309-366`) composes it. Rule 3 becomes
-  "`published` for this generation, and `run_finished_with_failures(output_dir)` is not
-  `None`". Rule 4 (process) keeps its own arm. **[call]** This tightens the waiter:
+  - `observe_local_exit`, for a local exit `3`, and `observe_finished_without_submission`
+    (PA1): one shallow `resolve_run_state`, then the verdict over it;
+  - `_rehydrated_status` (`shell/_runs_registry.py:1026-1104`): the shallow state it already
+    resolves;
+  - the snapshot badge: the shallow state `_run_completion` resolves
+    (`_snapshot_status.py:101-121`), returned whole instead of only its completion;
+  - the claim gate (PA11): the shallow state `_foreign_run_conflict` resolves under the owner
+    lock (`:1436-1446`, `:1460`);
+  - the write-authority checks (PA10): each passes the state it judges. The mutation guard
+    passes its **fresh** and its **verified deep** states (`_mutation_guard.py:136-177`), so
+    the verdict and the identity digest it is compared beside describe the same instant.
+- **The waiter.** `_run_snapshot` (`_cli_wait.py:116-130`) computes the verdict in its single
+  pass, and `RunSnapshot` gains `finished_with_failures: int | None`, so "the verdict and the
+  counts describe the same instant" still holds. `decide_wait_outcome` (`:309-366`) takes it as
+  a **value** and stays a pure function (`tests/unit/cli/test_cli_wait.py:3-8`). Rule 3 becomes
+  "`published` for this generation, and `finished_with_failures` is not `None`". Rule 4
+  (process) keeps its own arm. **[call]** This tightens the waiter (D14):
   - before, a publication by this generation that no longer covers the run returned `3`;
   - now it returns `5`, `ENDED_UNPUBLISHED`.
+  - **The realistic trigger (N3)** is a finalize that **excluded an unprojectable store**
+    (`project_embedded_measurement_table`, `_cli/_cli_parquet_agg.py:277`; the root
+    `CLAUDE.md`, "Output layout"). Its proof's `source_set_digest` omits a verified image, so
+    such a run with failures moves from `3` to `5` deterministically. A metadata change after
+    finalize almost never falls inside the waiter's window, because the live-run guard
+    refuses a second invocation while the run is live.
+  - **The exit-5 line gains a variant.** `_unpublished_line` (`_cli_wait.py:404-424`) prints
+    "this submission published nothing, so its finalizer failed or never ran". When the
+    generation did publish but the verdict is `None`, it prints instead: "phenotypic-wait:
+    this submission published, but its published outputs no longer cover the run (for
+    example, a store the finalizer could not project was left out; the finalizer log under
+    <logs> names it). Re-running the same command does not change that until the cause is
+    fixed." **[call]**
 
-  It changes the meaning of #281's exit-code contract in one edge case, so it is §11 Q2.
+  It changes what #281's exit `3` promises in one edge case; D14 adopts it.
 - **The SLURM observer, generation-bound.** A thin wrapper,
   `finished_run_outcome(output_dir, generation) -> RunExitCode | None`, in `_cli/_cli_wait.py`.
-  It is `decide_wait_outcome` over the existing seams, with the live-jobs check left to the
-  caller. Only the SLURM observer calls it; it already imports lifecycle readers from `_cli`
+  It is `decide_wait_outcome` over one `_run_snapshot` and the other existing seams, with the
+  live-jobs check left to the caller. Only the SLURM observer calls it; it already imports lifecycle readers from `_cli`
   (`run_console/_slurm_observer.py:27-29`). At the "inactive, no marker" branch (`:661-671`),
   the outcome maps as follows:
   - `COMPLETE_WITH_FAILURES` gives `complete_with_failures` with N;
@@ -675,8 +711,8 @@ reserves vermilion for error and alert.
   - a curated `complete_with_failures` run still reads "Run complete · N images failed".
 - **The waiter tests (`tests/unit/cli/`):**
   - pass through the composed rule 3;
-  - a new test for the tightened case, a stale publication returning `ENDED_UNPUBLISHED`,
-    subject to §11 Q2.
+  - a new test for the tightened case (D14): a finalize that excluded an unprojectable store
+    returns `ENDED_UNPUBLISHED`, and prints the exit-5 variant line.
 
 ### PA5. TSV exports and mirror readers
 
@@ -741,9 +777,10 @@ checked at `_publication.py:490-495, 638-644, 662-676, 710-714`, under
   - `measurements_csv_path`'s only GUI import (`_filtered_state.py:44`) is gone;
   - `MEASUREMENTS_CSV` remains only as `_config.py`'s re-export.
 
-  So the test is edited to assert the names the GUI imports after #283
-  (`MEASUREMENTS_TSV`, `measurements_table_path`). Its module docstring anticipates that
-  edit (`:4, 15`). `gui_sdk_signatures.json` is regenerated the same way. The sdk_ *exports*
+  So the test is edited to assert `MEASUREMENTS_TSV` only (N6). `_schema_cache` resolves
+  through the `BundleLayout.measurements_table_path()` *method*, and the walk records only
+  imported names (`:54-86`), so the free function `measurements_table_path` would never appear
+  in it. Its module docstring anticipates the edit (`:4, 15`). `gui_sdk_signatures.json` is regenerated the same way. The sdk_ *exports*
   stay defined as legacy read names (PA8). That is a separate fact; the walk does not pin it.
 
 **Tests:**
@@ -830,7 +867,8 @@ The other tune surfaces move to §8, to be fixed when `/tune/` is re-mounted.
   - **`docs/source/tutorials/gui/04_run_local.md` and `05_run_slurm.md`:**
     - one paragraph on `complete · N failed`: how it differs from `failed`, that the failed
       images have no rows, and that the output can be relaunched with `--retry-failures`
-      (PA11);
+      (PA11). If that relaunch is killed before it finalizes, the GUI refuses the output, and
+      it is resumed by re-running the same command from the CLI (N7);
   - **`06_view_results.md`:**
     - one paragraph on the badge and on curating such a run (PA10);
     - **curate after the last re-run (D11).** A CLI re-run or `dvc repro` of a run with
@@ -912,6 +950,12 @@ from both runs.
   - the readers rule gains `run_finished_with_failures` as the sdk_ answer to "did this run
     finish with failures?".
 - **`docs/source/contrib_guide/tracked_state.md`**: the Known consumers rows (PA4).
+- **Every description of exit `5` (D14, N3)**, which now also covers "published, but the
+  published outputs no longer cover the run":
+  - `RunExitCode.ENDED_UNPUBLISHED`'s docstring, "published nothing" (`sdk_/_exit_codes.py:29-30`);
+  - `_cli/CLAUDE.md`'s exit-code table (`:663`) and its `phenotypic-wait` bullets (`:697-745`,
+    `:1549`);
+  - the DVC how-to's exit-code table and its text about `3` (`docs/source/how_to/pages/dvc.md:370-392`).
 - **The other pages that name it:** `docs/source/api_reference/cli_reference.rst`,
   `how_to/pages/{reference_metadata,migrate_ome_zarr,rembi_metadata,generate_reports}.md`,
   `tutorials/gui/01_setup.md`, `tutorials/notebooks/07_measuring_and_exporting.ipynb`.
@@ -1066,8 +1110,10 @@ is no CLI change (D11). The tutorial and the DVC how-to say: curate after the la
   - `curation_labels.parquet` and `errors/` survive;
   - `measurements.parquet` and `measurements.tsv` are reseeded uncurated: the curated-removed
     rows are back;
-  - the next GUI curation write re-applies the surviving labels, so the removed rows are gone
-    again;
+  - after the viewer refreshes, the next GUI curation write re-applies the surviving labels,
+    so the removed rows are gone again. The refresh is required: the re-finalize changed the
+    session's fingerprint, so `_publish_if_current` refuses the write until the viewer reloads
+    (`_curation_labels.py:773-800`; re-review C4 note);
 - the Results and Analysis read-only diagnostic no longer appears for such a run.
 
 ### PA11. Relaunching a run that finished with failures (D10, review C2)
@@ -1096,6 +1142,13 @@ docstring's "Fires when" list (`:1418-1423`) says so.
 | `completion == "active"` | `:1462-1466` | A liveness authority (a SLURM fence, a live pid) claims the output; a second launch would be a second writer |
 | `completion == "failed"` that the verdict does **not** confirm | `:1469-1474` | An unfinished run: an unresolved image, no aggregate proof, or a publication that no longer covers the run (C1). Its state is mid-way, and a new launch would mix with it |
 | `completion == "incomplete"` | `:1475-1479` | Accepted work that never verified, or was never published over |
+
+**A killed relaunch can only be resumed from the CLI (N7).** Suppose a GUI-launched
+`--retry-failures` (or plain Run) relaunch on a confirmed output is killed before it
+finalizes. The output is then an unconfirmed `failed` run, and this gate refuses it, as D10's
+"still refuses … unfinished" requires. The GUI's own relaunch is what strands the user on the
+CLI, so the refusal message and the tutorial (PA7) both say to re-run the same command from
+the CLI.
 
 The refusal message for an unconfirmed `failed` run no longer calls a GUI-launched run
 "non-GUI". It says "output has an unfinished run with N failed image(s) of M accepted; re-run
@@ -1606,7 +1659,9 @@ FEATURES row:
   - a tune Deploy refusal;
   - 13 red GUI tests.
 
-  #281's own spec forbids that order (§2.2), and #283 says the same. See §11 Q1.
+  #281's own spec forbids that order (§2.2), and #283 says the same. D9 settles it: #281 is
+  held until PR A is ready, and the two merge back to back, so the window is the gap between
+  the merges.
 - **R10. Rebase drift.** PA citations are at `36b9e840e`. #281 may change again before it
   merges, and `main` will hold other merges. Every citation, and the 13-red table, is
   re-verified after the rebase, and the reds are re-run there (§1).
@@ -1657,16 +1712,18 @@ FEATURES row:
    (§3.3).
 2. **SLURM exit `0`/`3` means "finished without submitting"**, and is never bound to an
    earlier generation's job set (PA1 b).
-3. **Exit `2` and exit `4` never cancel.** `_reconcile_submission` gains `cancel_inactive`;
-   only the timeout and stream-error arms pass `True` (PA1).
+3. **Exit `2` and exit `4` never cancel or bind an old generation.** Exit 2 does not reconcile;
+   exit 4 reconciles with `cancel_inactive=False`, under which an inactive fence returns no
+   jobs. Only the timeout and stream-error arms pass `True` (PA1).
 4. **The 0/3 result is its own type**, not a `SlurmSubmitResult` subclass. A `cancelling`
    record meeting it becomes `cancelled` (PA1).
 5. **PR A leaves the 60-second submitter timeout alone** (PA1, R12).
-6. **The verdict `run_finished_with_failures` lives in `sdk_/_run_state.py`**, as the
-   failed-run twin of rule 1. It shares one private helper with
-   `_run_proof_covers_current_inventory`. The waiter composes it; a thin
+6. **The verdict `run_finished_with_failures(state, output_dir)` lives in `sdk_/_run_state.py`**,
+   as the failed-run twin of rule 1. It takes the caller's `RunState`, and shares one private
+   helper with `_run_proof_covers_current_inventory`. The waiter computes it inside
+   `_run_snapshot` and passes a value to the pure `decide_wait_outcome`; a thin
    `finished_run_outcome` wrapper in `_cli_wait.py` serves only the SLURM observer (PA4).
-7. **The verdict's process-run arm mirrors waiter rule 4** (PA4).
+7. **The verdict returns `None` for a process run**; no caller needs a process arm (PA4, N4).
 8. **A new terminal status `complete_with_failures` plus `failed_images`**, coloured
    `--oi-orange-text` (PA4 a).
 9. **When a curated TSV write fails, unlink the TSV and a stale CSV.** A stale CSV is retired
@@ -1734,7 +1791,10 @@ These settle the first draft's eight questions, the merge-order question (D9), t
   outputs no longer cover the current run (e.g. the metadata snapshot changed after finalize)
   exits `5` (`ENDED_UNPUBLISHED`), not `3`. Exit-code values are unchanged; exit `3` now
   always means the published outputs are current. The GUI and a DVC stage give one answer.
-  The waiter's tests gain that case.
+  The waiter's tests gain that case. *The realistic trigger (re-review N3) is a finalize that
+  excluded an unprojectable store, whose proof omits a verified image; the metadata example
+  above rarely falls inside the waiter's window. PA4 names it, tests it, and gives the exit-5
+  line a variant; PA8 lists the docs that describe exit 5.*
 
 ---
 
@@ -1784,3 +1844,16 @@ The review is `docs/superpowers/reports/2026-11-24-gui-dvc-followups/spec-review
 | **Minor 17** A tautological TSV bytes test | PA5: a read-back check |
 | **Minor 18** A stopping point for the CliRunner test | PB5: a `scan_store_outputs` sentinel |
 | **Minor 19** 62 importers vs callers | PA8, §6 and R8: 28 callers, 62 importers |
+
+**Re-review of revision 3** (appended to the same report):
+
+| Finding | Fix |
+|---|---|
+| **N1** The verdict resolved its own state | PA4: `run_finished_with_failures(state, output_dir)`. Each caller passes the state it resolved at its own depth; the guard passes its fresh and verified deep states. The waiter computes the verdict in `_run_snapshot`'s single pass and passes a value to the pure `decide_wait_outcome`. §9 call 6 |
+| **N2** `cancel_inactive=False` could bind an old generation; the exit-2 wording | PA1: an inactive fence under `cancel_inactive=False` returns no jobs without reconciling. Exit 2 does not reconcile at all. A no-stale-binding test is added. §9 call 3 |
+| **N3** D14's exit-5 surfaces | PA4 names the realistic trigger (an excluded unprojectable store), tests it, and gives the exit-5 line a variant. PA8 lists the four surfaces. D14's text records the trigger |
+| **N4** The unused process arm | PA4 step 5: the verdict returns `None` for a process run; a process tree with failures stays unclaimable. §9 call 7 |
+| **N5** Stale §11 cross-references | The header, §1, PA4's waiter bullet and test, and R9 now cite D9 and D14 |
+| **N6** The import-walk edit | PA5: assert `MEASUREMENTS_TSV` only |
+| **N7** A killed GUI relaunch strands the user on the CLI | PA11 and PA7's tutorial text say so; the refusal message names the CLI re-run |
+| **C4 note** A Refresh before the re-applying write | PA10's re-run test refreshes the viewer first |

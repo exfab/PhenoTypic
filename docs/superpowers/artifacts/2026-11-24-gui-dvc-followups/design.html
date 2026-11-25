@@ -97,8 +97,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <p><strong>Scope</strong> was decided by the user on 2026-11-24: two PRs, plus one follow-up issue that is</p>
 <p>drafted here but not opened. The user's answers the same day widened both PRs (§10).</p>
 <p>Each judgement call of mine is marked <strong>[call]</strong> and collected in §9. The user's decisions</p>
-<p>are cited as <strong>D1–D8</strong> and <strong>D10–D13</strong> (§10; D9 is not used). New questions only the user can</p>
-<p>answer are in §11.</p>
+<p>are cited as <strong>D1–D14</strong> (§10). §11 records that no question is open.</p>
 </div></header>
 <nav class="toc" aria-label="Contents"><b>GUI Follow-ups</b><ul><li class="l2"><a href="#1-intent">1. Intent</a></li><li class="l2"><a href="#2-goals-non-goals-anti-goals">2. Goals, non-goals, anti-goals</a></li><li class="l3"><a href="#21-goals">2.1 Goals</a></li><li class="l3"><a href="#22-non-goals">2.2 Non-goals</a></li><li class="l3"><a href="#23-anti-goals-failure-even-if-everything-works">2.3 Anti-goals (failure even if everything "works")</a></li><li class="l2"><a href="#3-what-the-code-does-today-verified">3. What the code does today (verified)</a></li><li class="l3"><a href="#31-exit-code-4-does-not-fail-every-slurm-launch-its-effect-is-narrower-and-worse">3.1 Exit code 4 does not fail every SLURM launch. Its effect is narrower, and worse</a></li><li class="l3"><a href="#32-complete-with-failures-has-no-representation-anywhere-in-the-gui">3.2 "Complete with failures" has no representation anywhere in the GUI</a></li><li class="l3"><a href="#33-two-of-the-13-reds-are-stale-tests-and-one-needs-a-test-edit-as-well-as-code">3.3 Two of the 13 reds are stale tests, and one needs a test edit as well as code</a></li><li class="l3"><a href="#34-measure-mode-in-the-cli-for-pb5-at-0993c8e06">3.4 Measure mode in the CLI (for PB5), at 0993c8e06</a></li><li class="l2"><a href="#4-pr-a-gui-follow-up-for-281-closes-283">4. PR A: GUI follow-up for #281 (closes #283)</a></li><li class="l3"><a href="#pa1-the-slurm-submission-exit-code">PA1. The SLURM submission exit code</a></li><li class="l3"><a href="#pa2-the-results-viewer-table-path">PA2. The results viewer table path</a></li><li class="l3"><a href="#pa3-the-13-expected-red-tests">PA3. The 13 expected-red tests</a></li><li class="l3"><a href="#pa4-exit-3-reads-complete-n-images-failed">PA4. Exit 3 reads "complete, N images failed"</a></li><li class="l3"><a href="#pa5-tsv-exports-and-mirror-readers">PA5. TSV exports and mirror readers</a></li><li class="l3"><a href="#pa6-the-typed-config-suffixes">PA6. The typed config suffixes</a></li><li class="l3"><a href="#pa7-ledgers-tutorial-text-and-screenshots-the-gui-tutorial-capture-skill">PA7. Ledgers, tutorial text and screenshots (the gui-tutorial-capture skill)</a></li><li class="l3"><a href="#pa8-measurementscsv-retirement-d1">PA8. measurements.csv retirement (D1)</a></li><li class="l3"><a href="#pa9-tsv-capable-metadata-pickers-and-readers-d8">PA9. TSV-capable metadata pickers and readers (D8)</a></li><li class="l3"><a href="#pa10-curation-of-a-complete_with_failures-run-d2-d11">PA10. Curation of a complete_with_failures run (D2, D11)</a></li><li class="l3"><a href="#pa11-relaunching-a-run-that-finished-with-failures-d10-review-c2">PA11. Relaunching a run that finished with failures (D10, review C2)</a></li><li class="l2"><a href="#5-pr-b-run-console-stage-4-and-measure-mode-282-gui-items">5. PR B: run-console Stage 4 and measure mode (#282 GUI items)</a></li><li class="l3"><a href="#pb1-an---embed-stage-control">PB1. An --embed-stage control</a></li><li class="l3"><a href="#pb2-gpu-section-visibility-and-the-auto-hint-match-the-clis-resolution">PB2. GPU section visibility and the Auto hint match the CLI's resolution</a></li><li class="l3"><a href="#pb3-stage-4-refusals-in-rc-staged-gpu-refusal">PB3. Stage-4 refusals in rc-staged-gpu-refusal</a></li><li class="l3"><a href="#pb4-ledgers-tutorial-text-and-screenshots">PB4. Ledgers, tutorial text and screenshots</a></li><li class="l3"><a href="#pb5-measure-mode-in-the-run-console-d6">PB5. Measure mode in the run console (D6)</a></li><li class="l2"><a href="#6-test-strategy">6. Test strategy</a></li><li class="l2"><a href="#7-risks">7. Risks</a></li><li class="l2"><a href="#8-follow-up-issue-draft-not-to-be-opened-by-this-work">8. Follow-up issue (draft, not to be opened by this work)</a></li><li class="l2"><a href="#9-my-judgement-calls-for-review">9. My judgement calls (for review)</a></li><li class="l2"><a href="#10-decisions-user-2026-11-24">10. Decisions (user, 2026-11-24)</a></li><li class="l2"><a href="#11-open-questions-only-the-user-can-answer">11. Open questions (only the user can answer)</a></li><li class="l2"><a href="#12-revision-3-spec-review">12. Revision 3 (spec review)</a></li></ul></nav>
 <main><section class="doc"><h2 id="1-intent">1. Intent</h2>
@@ -124,10 +123,10 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>Stage-4 refusals shown the way the staged-GPU refusal already is;</li>
 <li><code>--mode measure</code> (D6).</li>
 </ul>
-<p><strong>Sequencing (D5).</strong></p>
+<p><strong>Sequencing (D5, D9).</strong></p>
 <ol type="1">
 <li><strong>Now.</strong> PR A is built on #281's branch.</li>
-<li><strong>#281 merges to <code>main</code> first.</strong> PR A targets <code>main</code> after that.</li>
+<li><strong>#281 is held until PR A is reviewed and ready (D9), then merges to <code>main</code>.</strong> PR A targets <code>main</code> and merges right after it.</li>
 <li><strong>Before PR A is opened:</strong>
 <ul>
 <li><code>git fetch origin</code> and rebase <code>feat/gui-dvc-followups</code> onto the latest <code>origin/main</code>, which will by then contain #281;</li>
@@ -141,7 +140,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul></li>
 <li><strong>PR B is cut only after step 4.</strong> PR B needs PA1, because a Stage-4 SLURM submission exits <code>4</code> like any other, and it needs PA4's verdict (PB5).</li>
 </ol>
-<p>This reverses #281's own merge gate ("#281 does not merge to <code>main</code> before #283 fixes these", #281 spec §2.2). Between the two merges <code>main</code> carries the breaks in §3. See §7 R9 and §11 Q1.</p>
+<p>#281's own merge gate says "#281 does not merge to <code>main</code> before #283 fixes these" (#281 spec §2.2). D9 keeps its intent: the two merge back to back, so <code>main</code> carries the §3 breaks only for the gap between the merges. See §7 R9 and D9.</p>
 <hr />
 <h2 id="2-goals-non-goals-anti-goals">2. Goals, non-goals, anti-goals</h2>
 <h3 id="21-goals">2.1 Goals</h3>
@@ -494,7 +493,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <tr class="odd">
 <td><code>SUBMITTED</code> (4)</td>
 <td>queued</td>
-<td>The normal path. No <code>ambiguous_error</code>. Read <code>read_submitted_job_set(output_dir)</code>. When <code>None</code>, call <code>_reconcile_submission(output_dir, cancel_inactive=False)</code> once. If that also finds nothing, raise one error naming "SUBMITTED". Return <code>reconciled=False</code> unless reconciliation found the jobs.</td>
+<td>The normal path. No <code>ambiguous_error</code>. Read <code>read_submitted_job_set(output_dir)</code>. When <code>None</code>, call <code>_reconcile_submission(output_dir, cancel_inactive=False)</code> once; an inactive fence then returns "no jobs" without reconciling (N2). If that also finds nothing, raise one error naming "SUBMITTED". Return <code>reconciled=False</code> unless reconciliation found the jobs.</td>
 </tr>
 <tr class="even">
 <td><code>COMPLETE</code> (0) / <code>COMPLETE_WITH_FAILURES</code> (3)</td>
@@ -504,7 +503,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <tr class="odd">
 <td><code>2</code> (usage error)</td>
 <td>refused before anything was submitted</td>
-<td>Reconcile with <code>cancel_inactive=False</code>, so any durable job of <em>this</em> generation is still attached, then raise the refusal with the CLI's stderr. Never cancel. <strong>[call]</strong> (review Minor 15)</td>
+<td><strong>Does not reconcile.</strong> Raise the refusal with the CLI's stderr; never cancel, never bind. A usage error is raised in the CLI's read-only half, before any submission (<code>_cli/CLAUDE.md</code>, "The run preflight, and the read-only/mutating split"), so there is no job of this generation to attach. <strong>[call]</strong> (review Minor 15, N2)</td>
 </tr>
 <tr class="even">
 <td><code>-1</code> (timeout), stream error, any other code</td>
@@ -513,7 +512,13 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 </tbody>
 </table></div>
-<p><strong>The no-cancel flag (I5).</strong> <code>_reconcile_submission</code> gains a keyword <code>cancel_inactive: bool</code>. Only the timeout and stream-error arms pass <code>True</code>. Today the inactive→cancel branch (<code>_slurm.py:652-656</code>) is reached from every caller, including the clean-exit arm (<code>:837-841</code>); with the flag, exit <code>4</code> and exit <code>2</code> can never reach it.</p>
+<p><strong>The no-cancel flag (I5, N2).</strong> <code>_reconcile_submission</code> gains a keyword <code>cancel_inactive: bool</code>.</p>
+<ul>
+<li><strong><code>True</code></strong> (the timeout and stream-error arms only): an inactive fence is cancelled as today (<code>_slurm.py:652-656</code>).</li>
+<li><strong><code>False</code></strong> (exit <code>4</code> with no job set): an inactive fence returns "no jobs" at once, <strong>without reconciling its ledger or scheduler comments</strong>. Falling through instead would reconcile whatever previous generation the fence names, return its unresolved tokens, raise <code>SlurmSubmitPending</code> (<code>:844-856</code>), and let the callback bind the GUI record to that <strong>old</strong> generation (<code>run_console/_callbacks.py:1048-1084</code>).</li>
+<li><strong>Exit <code>2</code></strong> never calls <code>_reconcile_submission</code>.</li>
+</ul>
+<p>Today the inactive→cancel branch is reached from every caller, including the clean-exit arm (<code>:837-841</code>); with the flag, exit <code>4</code> and exit <code>2</code> can never reach it, and neither can bind.</p>
 <p><strong>The 0/3 result (I6).</strong></p>
 <ul>
 <li><strong>Type.</strong> <code>SlurmFinishedWithoutSubmission</code> is its own frozen dataclass, <strong>not</strong> a subclass of <code>SlurmSubmitResult</code>. A subclass carrying no job id would pass every downstream <code>isinstance(SlurmSubmitResult)</code> check and be bound. <strong>[call]</strong> These sites change to accept the union:
@@ -568,6 +573,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul></li>
 <li><strong>Exit 0 and 3</strong>, with a previous generation's job set on disk: no binding, no cancel, and a terminal record (<code>complete</code> / <code>complete_with_failures</code>). One synthetic exit-3 test is enough, because the GUI rarely reaches it (§3.1; review Minor 9).</li>
 <li>A <code>cancelling</code> record meeting a 0/3 result becomes <code>cancelled</code>.</li>
+<li><strong>No stale binding (N2).</strong> An inactive previous generation with an unresolved <code>intent</code> row, plus exit 2 or exit 4 with no job set: <code>SlurmSubmitPending</code> is never raised, and the GUI record is never bound to that generation.</li>
 <li><strong>Exit 2.</strong> <code>test_submit_slurm_raises_on_non_zero_exit</code> keeps its message assertions. <code>test_abnormal_exit_cancels_recovered_inactive_generation</code> is changed to pin the opposite: exit 2 never calls <code>cancel_generation</code>. A new test pins the cancel on the <strong>timeout</strong> arm, which keeps it. This is a deliberate behaviour change, so the commit says so.</li>
 <li><strong>A probe that cannot pass vacuously.</strong> Every mock-based test asserts the <code>cancel_generation</code> mock's call count, so a regression to (a) fails.</li>
 <li><strong>Live lane:</strong> <code>tests/integration/gui/test_run_console_slurm_live.py</code> (<code>PHENOTYPIC_RUN_LIVE_SLURM=1</code>, <code>slow</code>) is the only end-to-end proof that a real exit 4 lands <code>queued</code>. Run it once before PR A is opened, after the rebase.</li>
@@ -609,7 +615,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><strong>The no-dashboard message</strong> (<code>:2549-2560</code>): the same text.</li>
 <li><strong>The results-viewer and analysis snapshot badge (D3).</strong> In <code>snapshot_refresh_status</code> (<code>_gui/_snapshot_status.py:53-98</code>) the new arm does <strong>not</strong> return before the currency check, as the unfinished arm does (<code>:84-91</code>). It falls through to <code>snapshot_is_current</code> (<code>:92-98</code>). A confirmed run with a current snapshot reads "Run complete · N images failed" (warning); one that is not current reads "Changed on disk", as a complete run does (review I4). This keeps the module's CAN-18 rule (<code>:3-9</code>). <code>_UNFINISHED_BADGE</code> (<code>:47-50</code>) keeps its two literals, so <code>test_every_completion_literal_has_a_badge</code> still binds it.</li>
 </ul>
-<p><strong>The verdict: one sdk_ function, the failed-run twin of rule 1 (C1, I1).</strong> <code>run_finished_with_failures(output_dir) -&gt; int | None</code>, in <code>sdk_/_run_state.py</code> beside <code>_run_proof_covers_current_inventory</code> (<code>:1464-1541</code>) and exported from <code>phenotypic.sdk_</code>. It returns N, or <code>None</code>, from one <code>resolve_run_state</code> pass and the aggregate proof:</p>
+<p><strong>The verdict: one sdk_ function, the failed-run twin of rule 1 (C1, I1).</strong> <code>run_finished_with_failures(state: RunState, output_dir: Path) -&gt; int | None</code>, in <code>sdk_/_run_state.py</code> beside <code>_run_proof_covers_current_inventory</code> (<code>:1464-1541</code>) and exported from <code>phenotypic.sdk_</code> (N1). It returns N, or <code>None</code>, from <strong>the caller's own <code>RunState</code></strong> and the aggregate proof beside it. It does no <code>resolve_run_state</code> of its own, so each caller judges the state it already resolved, at its own depth:</p>
 <ol type="1">
 <li><strong>Completion.</strong> <code>completion == "failed"</code>: no live authority, and at least one image failed (<code>:1922-1934</code>).</li>
 <li><strong>Resolution.</strong> Every accepted image's verdict is <code>verified</code> or <code>failed</code>, so <code>accepted - verified - failed == 0</code>.</li>
@@ -621,27 +627,28 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><code>proof["finalization_input_digest"] in accepted_finalization_digests(config)</code> (<code>:1436</code>);</li>
 <li><code>proof["source_set_digest"] == canonical_digest(sorted(verified work ids))</code>, and <code>proof["source_image_count"] == len(verified)</code>. The aggregate proof carries both directly (<code>_cli_completion.py:1258-1259</code>).</li>
 </ul></li>
-<li><strong>A process run</strong> publishes no aggregate proof. For it, (3) and (4) are replaced by rule 1's process arm: the run's <code>process_only_layer</code> is recorded, and no fence of it is cancelled. <strong>[call]</strong> This mirrors <code>decide_wait_outcome</code> rule 4 (<code>_cli_wait.py:356-364</code>).</li>
+<li><strong>Not a process run.</strong> A run whose config records <code>process_only_layer</code> returns <code>None</code> (N4). No caller needs a process arm: the waiter keeps its own rule 4 (<code>_cli_wait.py:356-364</code>), the GUI has no process mode, and the viewer does not open process trees. A process tree with failures therefore stays unclaimable (PA11), which is right, because the CLI would refuse a full-mode continuation of it as incompatible.</li>
 </ol>
 <p>The comparisons in (4) are shared with <code>_run_proof_covers_current_inventory</code> through one private helper, so the two arms cannot drift. <strong>[call]</strong></p>
-<p><strong>Who calls it:</strong></p>
+<p><strong>Who calls it, and with which state (N1):</strong></p>
 <ul>
 <li><p><strong>GUI, generation-less</strong> (these import from <code>phenotypic.sdk_</code> only, per the readers rule):</p>
 <ul>
-<li><code>observe_local_exit</code>, for a local exit <code>3</code>;</li>
-<li><code>observe_finished_without_submission</code> (PA1);</li>
-<li><code>_rehydrated_status</code> (<code>shell/_runs_registry.py:1026-1104</code>);</li>
-<li>the snapshot badge;</li>
-<li>the claim gate (PA11);</li>
-<li>the write-authority checks (PA10).</li>
+<li><code>observe_local_exit</code>, for a local exit <code>3</code>, and <code>observe_finished_without_submission</code> (PA1): one shallow <code>resolve_run_state</code>, then the verdict over it;</li>
+<li><code>_rehydrated_status</code> (<code>shell/_runs_registry.py:1026-1104</code>): the shallow state it already resolves;</li>
+<li>the snapshot badge: the shallow state <code>_run_completion</code> resolves (<code>_snapshot_status.py:101-121</code>), returned whole instead of only its completion;</li>
+<li>the claim gate (PA11): the shallow state <code>_foreign_run_conflict</code> resolves under the owner lock (<code>:1436-1446</code>, <code>:1460</code>);</li>
+<li>the write-authority checks (PA10): each passes the state it judges. The mutation guard passes its <strong>fresh</strong> and its <strong>verified deep</strong> states (<code>_mutation_guard.py:136-177</code>), so the verdict and the identity digest it is compared beside describe the same instant.</li>
 </ul></li>
-<li><p><strong>The waiter.</strong> <code>_cli_wait.decide_wait_outcome</code> (<code>:309-366</code>) composes it. Rule 3 becomes "<code>published</code> for this generation, and <code>run_finished_with_failures(output_dir)</code> is not <code>None</code>". Rule 4 (process) keeps its own arm. <strong>[call]</strong> This tightens the waiter:</p>
+<li><p><strong>The waiter.</strong> <code>_run_snapshot</code> (<code>_cli_wait.py:116-130</code>) computes the verdict in its single pass, and <code>RunSnapshot</code> gains <code>finished_with_failures: int | None</code>, so "the verdict and the counts describe the same instant" still holds. <code>decide_wait_outcome</code> (<code>:309-366</code>) takes it as a <strong>value</strong> and stays a pure function (<code>tests/unit/cli/test_cli_wait.py:3-8</code>). Rule 3 becomes "<code>published</code> for this generation, and <code>finished_with_failures</code> is not <code>None</code>". Rule 4 (process) keeps its own arm. <strong>[call]</strong> This tightens the waiter (D14):</p>
 <ul>
 <li>before, a publication by this generation that no longer covers the run returned <code>3</code>;</li>
 <li>now it returns <code>5</code>, <code>ENDED_UNPUBLISHED</code>.</li>
+<li><strong>The realistic trigger (N3)</strong> is a finalize that <strong>excluded an unprojectable store</strong> (<code>project_embedded_measurement_table</code>, <code>_cli/_cli_parquet_agg.py:277</code>; the root <code>CLAUDE.md</code>, "Output layout"). Its proof's <code>source_set_digest</code> omits a verified image, so such a run with failures moves from <code>3</code> to <code>5</code> deterministically. A metadata change after finalize almost never falls inside the waiter's window, because the live-run guard refuses a second invocation while the run is live.</li>
+<li><strong>The exit-5 line gains a variant.</strong> <code>_unpublished_line</code> (<code>_cli_wait.py:404-424</code>) prints "this submission published nothing, so its finalizer failed or never ran". When the generation did publish but the verdict is <code>None</code>, it prints instead: "phenotypic-wait: this submission published, but its published outputs no longer cover the run (for example, a store the finalizer could not project was left out; the finalizer log under <logs> names it). Re-running the same command does not change that until the cause is fixed." <strong>[call]</strong></li>
 </ul>
-<p>It changes the meaning of #281's exit-code contract in one edge case, so it is §11 Q2.</p></li>
-<li><p><strong>The SLURM observer, generation-bound.</strong> A thin wrapper, <code>finished_run_outcome(output_dir, generation) -&gt; RunExitCode | None</code>, in <code>_cli/_cli_wait.py</code>. It is <code>decide_wait_outcome</code> over the existing seams, with the live-jobs check left to the caller. Only the SLURM observer calls it; it already imports lifecycle readers from <code>_cli</code> (<code>run_console/_slurm_observer.py:27-29</code>). At the "inactive, no marker" branch (<code>:661-671</code>), the outcome maps as follows:</p>
+<p>It changes what #281's exit <code>3</code> promises in one edge case; D14 adopts it.</p></li>
+<li><p><strong>The SLURM observer, generation-bound.</strong> A thin wrapper, <code>finished_run_outcome(output_dir, generation) -&gt; RunExitCode | None</code>, in <code>_cli/_cli_wait.py</code>. It is <code>decide_wait_outcome</code> over one <code>_run_snapshot</code> and the other existing seams, with the live-jobs check left to the caller. Only the SLURM observer calls it; it already imports lifecycle readers from <code>_cli</code> (<code>run_console/_slurm_observer.py:27-29</code>). At the "inactive, no marker" branch (<code>:661-671</code>), the outcome maps as follows:</p>
 <ul>
 <li><code>COMPLETE_WITH_FAILURES</code> gives <code>complete_with_failures</code> with N;</li>
 <li><code>COMPLETE</code> gives <code>complete</code>;</li>
@@ -733,7 +740,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><strong>The waiter tests (<code>tests/unit/cli/</code>):</strong>
 <ul>
 <li>pass through the composed rule 3;</li>
-<li>a new test for the tightened case, a stale publication returning <code>ENDED_UNPUBLISHED</code>, subject to §11 Q2.</li>
+<li>a new test for the tightened case (D14): a finalize that excluded an unprojectable store returns <code>ENDED_UNPUBLISHED</code>, and prints the exit-5 variant line.</li>
 </ul></li>
 </ul>
 <h3 id="pa5-tsv-exports-and-mirror-readers">PA5. TSV exports and mirror readers</h3>
@@ -799,7 +806,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><code>measurements_csv_path</code>'s only GUI import (<code>_filtered_state.py:44</code>) is gone;</li>
 <li><code>MEASUREMENTS_CSV</code> remains only as <code>_config.py</code>'s re-export.</li>
 </ul>
-<p>So the test is edited to assert the names the GUI imports after #283 (<code>MEASUREMENTS_TSV</code>, <code>measurements_table_path</code>). Its module docstring anticipates that edit (<code>:4, 15</code>). <code>gui_sdk_signatures.json</code> is regenerated the same way. The sdk_ <em>exports</em> stay defined as legacy read names (PA8). That is a separate fact; the walk does not pin it.</p></li>
+<p>So the test is edited to assert <code>MEASUREMENTS_TSV</code> only (N6). <code>_schema_cache</code> resolves through the <code>BundleLayout.measurements_table_path()</code> <em>method</em>, and the walk records only imported names (<code>:54-86</code>), so the free function <code>measurements_table_path</code> would never appear in it. Its module docstring anticipates the edit (<code>:4, 15</code>). <code>gui_sdk_signatures.json</code> is regenerated the same way. The sdk_ <em>exports</em> stay defined as legacy read names (PA8). That is a separate fact; the walk does not pin it.</p></li>
 </ul>
 <p><strong>Tests:</strong></p>
 <ul>
@@ -925,7 +932,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <ul>
 <li><strong><code>docs/source/tutorials/gui/04_run_local.md</code> and <code>05_run_slurm.md</code>:</strong>
 <ul>
-<li>one paragraph on <code>complete · N failed</code>: how it differs from <code>failed</code>, that the failed images have no rows, and that the output can be relaunched with <code>--retry-failures</code> (PA11);</li>
+<li>one paragraph on <code>complete · N failed</code>: how it differs from <code>failed</code>, that the failed images have no rows, and that the output can be relaunched with <code>--retry-failures</code> (PA11). If that relaunch is killed before it finalizes, the GUI refuses the output, and it is resumed by re-running the same command from the CLI (N7);</li>
 </ul></li>
 <li><strong><code>06_view_results.md</code>:</strong>
 <ul>
@@ -1047,6 +1054,12 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>the readers rule gains <code>run_finished_with_failures</code> as the sdk_ answer to "did this run finish with failures?".</li>
 </ul></li>
 <li><p><strong><code>docs/source/contrib_guide/tracked_state.md</code></strong>: the Known consumers rows (PA4).</p></li>
+<li><p><strong>Every description of exit <code>5</code> (D14, N3)</strong>, which now also covers "published, but the published outputs no longer cover the run":</p>
+<ul>
+<li><code>RunExitCode.ENDED_UNPUBLISHED</code>'s docstring, "published nothing" (<code>sdk_/_exit_codes.py:29-30</code>);</li>
+<li><code>_cli/CLAUDE.md</code>'s exit-code table (<code>:663</code>) and its <code>phenotypic-wait</code> bullets (<code>:697-745</code>, <code>:1549</code>);</li>
+<li>the DVC how-to's exit-code table and its text about <code>3</code> (<code>docs/source/how_to/pages/dvc.md:370-392</code>).</li>
+</ul></li>
 <li><p><strong>The other pages that name it:</strong> <code>docs/source/api_reference/cli_reference.rst</code>, <code>how_to/pages/{reference_metadata,migrate_ome_zarr,rembi_metadata,generate_reports}.md</code>, <code>tutorials/gui/01_setup.md</code>, <code>tutorials/notebooks/07_measuring_and_exporting.ipynb</code>. The notebook is edited as text, not re-executed (§6).</p></li>
 <li><p><strong>Docstrings</strong> that say "a delivered <code>measurements.csv</code>": <code>analysis/qc/_expected_vs_detected.py:298, 410</code>.</p></li>
 </ul>
@@ -1206,7 +1219,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>exits <code>3</code> locally;</li>
 <li><code>curation_labels.parquet</code> and <code>errors/</code> survive;</li>
 <li><code>measurements.parquet</code> and <code>measurements.tsv</code> are reseeded uncurated: the curated-removed rows are back;</li>
-<li>the next GUI curation write re-applies the surviving labels, so the removed rows are gone again;</li>
+<li>after the viewer refreshes, the next GUI curation write re-applies the surviving labels, so the removed rows are gone again. The refresh is required: the re-finalize changed the session's fingerprint, so <code>_publish_if_current</code> refuses the write until the viewer reloads (<code>_curation_labels.py:773-800</code>; re-review C4 note);</li>
 </ul></li>
 <li>the Results and Analysis read-only diagnostic no longer appears for such a run.</li>
 </ul>
@@ -1257,6 +1270,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 </tbody>
 </table></div>
+<p><strong>A killed relaunch can only be resumed from the CLI (N7).</strong> Suppose a GUI-launched <code>--retry-failures</code> (or plain Run) relaunch on a confirmed output is killed before it finalizes. The output is then an unconfirmed <code>failed</code> run, and this gate refuses it, as D10's "still refuses … unfinished" requires. The GUI's own relaunch is what strands the user on the CLI, so the refusal message and the tutorial (PA7) both say to re-run the same command from the CLI.</p>
 <p>The refusal message for an unconfirmed <code>failed</code> run no longer calls a GUI-launched run "non-GUI". It says "output has an unfinished run with N failed image(s) of M accepted; re-run it from the CLI or wait for it to finish".</p>
 <p><strong>Tests</strong> (<code>tests/unit/gui/shell/test_runs_registry.py</code>):</p>
 <ul>
@@ -1779,7 +1793,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>a tune Deploy refusal;</li>
 <li>13 red GUI tests.</li>
 </ul>
-<p>#281's own spec forbids that order (§2.2), and #283 says the same. See §11 Q1.</p></li>
+<p>#281's own spec forbids that order (§2.2), and #283 says the same. D9 settles it: #281 is held until PR A is ready, and the two merge back to back, so the window is the gap between the merges.</p></li>
 <li><p><strong>R10. Rebase drift.</strong> PA citations are at <code>36b9e840e</code>. #281 may change again before it merges, and <code>main</code> will hold other merges. Every citation, and the 13-red table, is re-verified after the rebase, and the reds are re-run there (§1).</p></li>
 <li><p><strong>R11. PA9 changes a public analyzer's accepted input</strong> (<code>ExpectedVsDetectedCount</code> gains <code>.tsv</code>). It widens the input set and refuses nothing it accepted before.</p></li>
 <li><p><strong>R12. The 60-second submitter timeout</strong> (PA1, review Minor 14). A SLURM recompile that falls back to local work inside the submitter, and takes longer than 60 s, is killed and treated as ambiguous. It predates the spec and is not changed here.</p></li>
@@ -1807,11 +1821,11 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <ol type="1">
 <li><strong>The two stale tests.</strong> #7 and #8 are fixed by test edits that keep each test's property (§3.3).</li>
 <li><strong>SLURM exit <code>0</code>/<code>3</code> means "finished without submitting"</strong>, and is never bound to an earlier generation's job set (PA1 b).</li>
-<li><strong>Exit <code>2</code> and exit <code>4</code> never cancel.</strong> <code>_reconcile_submission</code> gains <code>cancel_inactive</code>; only the timeout and stream-error arms pass <code>True</code> (PA1).</li>
+<li><strong>Exit <code>2</code> and exit <code>4</code> never cancel or bind an old generation.</strong> Exit 2 does not reconcile; exit 4 reconciles with <code>cancel_inactive=False</code>, under which an inactive fence returns no jobs. Only the timeout and stream-error arms pass <code>True</code> (PA1).</li>
 <li><strong>The 0/3 result is its own type</strong>, not a <code>SlurmSubmitResult</code> subclass. A <code>cancelling</code> record meeting it becomes <code>cancelled</code> (PA1).</li>
 <li><strong>PR A leaves the 60-second submitter timeout alone</strong> (PA1, R12).</li>
-<li><strong>The verdict <code>run_finished_with_failures</code> lives in <code>sdk_/_run_state.py</code></strong>, as the failed-run twin of rule 1. It shares one private helper with <code>_run_proof_covers_current_inventory</code>. The waiter composes it; a thin <code>finished_run_outcome</code> wrapper in <code>_cli_wait.py</code> serves only the SLURM observer (PA4).</li>
-<li><strong>The verdict's process-run arm mirrors waiter rule 4</strong> (PA4).</li>
+<li><strong>The verdict <code>run_finished_with_failures(state, output_dir)</code> lives in <code>sdk_/_run_state.py</code></strong>, as the failed-run twin of rule 1. It takes the caller's <code>RunState</code>, and shares one private helper with <code>_run_proof_covers_current_inventory</code>. The waiter computes it inside <code>_run_snapshot</code> and passes a value to the pure <code>decide_wait_outcome</code>; a thin <code>finished_run_outcome</code> wrapper in <code>_cli_wait.py</code> serves only the SLURM observer (PA4).</li>
+<li><strong>The verdict returns <code>None</code> for a process run</strong>; no caller needs a process arm (PA4, N4).</li>
 <li><strong>A new terminal status <code>complete_with_failures</code> plus <code>failed_images</code></strong>, coloured <code>--oi-orange-text</code> (PA4 a).</li>
 <li><strong>When a curated TSV write fails, unlink the TSV and a stale CSV.</strong> A stale CSV is retired only after a successful TSV write (PA5).</li>
 <li><strong><code>FilteredMeasurements</code> gets a one-writer swap, CSV to TSV</strong>: neither left as is nor deleted (PA5).</li>
@@ -1845,7 +1859,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><strong>D12 (review Q3). The user's ucr_029/ucr_033 plotting scripts are left alone.</strong> The user will update them. They are a known external consumer that breaks at the next finalize (R6a).</li>
 <li><strong>D13 (review Q4). A SLURM measure run that ends with unfinished images reads <code>failed</code>, terminal,</strong> with the detail "re-run the same command" (PB5).</li>
 <li><strong>D9. Hold #281, then merge back to back</strong> (settles R9, the <code>main</code> window). PR A is built and reviewed on #281's branch first. When PR A is ready, #281 merges to <code>main</code>; PR A is then rebased onto the fresh <code>origin/main</code>, its citations, the 13-red table and its checks are re-run there, and it merges at once. <code>main</code> never sits on the §3 breaks beyond that short gap.</li>
-<li><strong>D14. <code>phenotypic-wait</code> adopts the currency check</strong> (user, 2026-11-24; settles the Revision 3 question). The waiter's rule 3 goes through the shared sdk_ verdict, so a run whose published outputs no longer cover the current run (e.g. the metadata snapshot changed after finalize) exits <code>5</code> (<code>ENDED_UNPUBLISHED</code>), not <code>3</code>. Exit-code values are unchanged; exit <code>3</code> now always means the published outputs are current. The GUI and a DVC stage give one answer. The waiter's tests gain that case.</li>
+<li><strong>D14. <code>phenotypic-wait</code> adopts the currency check</strong> (user, 2026-11-24; settles the Revision 3 question). The waiter's rule 3 goes through the shared sdk_ verdict, so a run whose published outputs no longer cover the current run (e.g. the metadata snapshot changed after finalize) exits <code>5</code> (<code>ENDED_UNPUBLISHED</code>), not <code>3</code>. Exit-code values are unchanged; exit <code>3</code> now always means the published outputs are current. The GUI and a DVC stage give one answer. The waiter's tests gain that case. <em>The realistic trigger (re-review N3) is a finalize that excluded an unprojectable store, whose proof omits a verified image; the metadata example above rarely falls inside the waiter's window. PA4 names it, tests it, and gives the exit-5 line a variant; PA8 lists the docs that describe exit 5.</em></li>
 </ul>
 <hr />
 <h2 id="11-open-questions-only-the-user-can-answer">11. Open questions (only the user can answer)</h2>
@@ -1996,6 +2010,49 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <tr class="even">
 <td><strong>Minor 19</strong> 62 importers vs callers</td>
 <td>PA8, §6 and R8: 28 callers, 62 importers</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Re-review of revision 3</strong> (appended to the same report):</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Finding</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>N1</strong> The verdict resolved its own state</td>
+<td>PA4: <code>run_finished_with_failures(state, output_dir)</code>. Each caller passes the state it resolved at its own depth; the guard passes its fresh and verified deep states. The waiter computes the verdict in <code>_run_snapshot</code>'s single pass and passes a value to the pure <code>decide_wait_outcome</code>. §9 call 6</td>
+</tr>
+<tr class="even">
+<td><strong>N2</strong> <code>cancel_inactive=False</code> could bind an old generation; the exit-2 wording</td>
+<td>PA1: an inactive fence under <code>cancel_inactive=False</code> returns no jobs without reconciling. Exit 2 does not reconcile at all. A no-stale-binding test is added. §9 call 3</td>
+</tr>
+<tr class="odd">
+<td><strong>N3</strong> D14's exit-5 surfaces</td>
+<td>PA4 names the realistic trigger (an excluded unprojectable store), tests it, and gives the exit-5 line a variant. PA8 lists the four surfaces. D14's text records the trigger</td>
+</tr>
+<tr class="even">
+<td><strong>N4</strong> The unused process arm</td>
+<td>PA4 step 5: the verdict returns <code>None</code> for a process run; a process tree with failures stays unclaimable. §9 call 7</td>
+</tr>
+<tr class="odd">
+<td><strong>N5</strong> Stale §11 cross-references</td>
+<td>The header, §1, PA4's waiter bullet and test, and R9 now cite D9 and D14</td>
+</tr>
+<tr class="even">
+<td><strong>N6</strong> The import-walk edit</td>
+<td>PA5: assert <code>MEASUREMENTS_TSV</code> only</td>
+</tr>
+<tr class="odd">
+<td><strong>N7</strong> A killed GUI relaunch strands the user on the CLI</td>
+<td>PA11 and PA7's tutorial text say so; the refusal message names the CLI re-run</td>
+</tr>
+<tr class="even">
+<td><strong>C4 note</strong> A Refresh before the re-applying write</td>
+<td>PA10's re-run test refreshes the viewer first</td>
 </tr>
 </tbody>
 </table></div>
