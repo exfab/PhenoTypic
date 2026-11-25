@@ -31,6 +31,9 @@
       load_yeast_plate_full
       load_fungi_plate_full
       load_bacteria_plate_full
+      load_example_metadata
+      load_example_measurements
+      load_example_images
    
    
 

@@ -1,0 +1,6 @@
+phenotypic.data.load\_example\_measurements
+===========================================
+
+.. currentmodule:: phenotypic.data
+
+.. autofunction:: load_example_measurements

@@ -647,6 +647,9 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_yeast_plate_full.html">phenotypic.data.load_yeast_plate_full</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_fungi_plate_full.html">phenotypic.data.load_fungi_plate_full</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_bacteria_plate_full.html">phenotypic.data.load_bacteria_plate_full</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_example_metadata.html">phenotypic.data.load_example_metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_example_measurements.html">phenotypic.data.load_example_measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_example_images.html">phenotypic.data.load_example_images</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.detect.html">phenotypic.detect</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -1343,6 +1346,15 @@ color-corrected bacterial plate. Utilities return arrays or ready-to-use
 <tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.data.load_bacteria_plate_full.html#phenotypic.data.load_bacteria_plate_full" title="phenotypic.data.load_bacteria_plate_full"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_bacteria_plate_full</span></code></a></p></td>
 <td><p>Load a full bacterial colony plate image, already color-corrected and denoised.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.data.load_example_metadata.html#phenotypic.data.load_example_metadata" title="phenotypic.data.load_example_metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_example_metadata</span></code></a></p></td>
+<td><p>Load the example time series' well metadata.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.data.load_example_measurements.html#phenotypic.data.load_example_measurements" title="phenotypic.data.load_example_measurements"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_example_measurements</span></code></a></p></td>
+<td><p>Load the example time series' colony measurements.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.data.load_example_images.html#phenotypic.data.load_example_images" title="phenotypic.data.load_example_images"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_example_images</span></code></a></p></td>
+<td><p>Fetch the example time series' images and return their store paths.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1406,6 +1418,100 @@ path.</p>
 <dd class="field-even"><p>Union[np.ndarray, Image, GridImage]</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.data.</span></span><span class="sig-name descname"><span class="pre">load_example_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterable" title="(in Python v3.15)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/data/_example_timeseries.html#load_example_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Fetch the example time series’ images and return their store paths.</p>
+<p>Only the plates asked for are downloaded (about 1.1 GB each). Read a store’s
+pixels with <code class="docutils literal notranslate"><span class="pre">Image.imread(path)</span></code> or <code class="docutils literal notranslate"><span class="pre">GridImage.imread(path,</span> <span class="pre">nrows=8,</span>
+<span class="pre">ncols=12)</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>plates</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterable" title="(in Python v3.15)"><em>Iterable</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – Replicate plates to fetch, any of <code class="docutils literal notranslate"><span class="pre">1</span></code>, <code class="docutils literal notranslate"><span class="pre">2</span></code>, <code class="docutils literal notranslate"><span class="pre">3</span></code>. Default:
+all three.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The <code class="docutils literal notranslate"><span class="pre">plate&lt;N&gt;_t&lt;HHH&gt;.ome.zarr</span></code> store paths, sorted by name.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – If a plate is not 1, 2 or 3.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><em>Path</em></a>]</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_example_images</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stores</span> <span class="o">=</span> <span class="n">load_example_images</span><span class="p">(</span><span class="n">plates</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plate</span> <span class="o">=</span> <span class="n">GridImage</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">stores</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">nrows</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.data.</span></span><span class="sig-name descname"><span class="pre">load_example_measurements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.1)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/data/_example_timeseries.html#load_example_measurements"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Load the example time series’ colony measurements.</p>
+<p>One row per detected colony: <code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code>, <code class="docutils literal notranslate"><span class="pre">Grid_RowNum</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Grid_ColNum</span></code>, <code class="docutils literal notranslate"><span class="pre">Object_Label</span></code> and PhenoTypic’s measurement columns
+(<code class="docutils literal notranslate"><span class="pre">Size_*</span></code>, <code class="docutils literal notranslate"><span class="pre">Shape_*</span></code>, <code class="docutils literal notranslate"><span class="pre">Intensity_*</span></code>, <code class="docutils literal notranslate"><span class="pre">Color_*</span></code> and more). Strains are
+not in this table; join <a class="reference internal" href="phenotypic.data.load_example_metadata.html#phenotypic.data.load_example_metadata" title="phenotypic.data.load_example_metadata"><code class="xref py py-func docutils literal notranslate"><span class="pre">load_example_metadata()</span></code></a> for them.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The measurement table, one row per measured colony.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.1)">pandas.DataFrame</a></p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_example_measurements</span><span class="p">,</span> <span class="n">load_example_metadata</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span><span class="p">,</span> <span class="n">IMAGE</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">m</span> <span class="o">=</span> <span class="n">load_example_measurements</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">with_strain</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">load_example_metadata</span><span class="p">(),</span>
+<span class="gp">... </span>    <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">IMAGE</span><span class="o">.</span><span class="n">IMAGE_NAME</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">)],</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.data.</span></span><span class="sig-name descname"><span class="pre">load_example_metadata</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.1)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/data/_example_timeseries.html#load_example_metadata"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Load the example time series’ well metadata.</p>
+<p>One row per well per image: <code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code> (<code class="docutils literal notranslate"><span class="pre">plate&lt;N&gt;_t&lt;HHH&gt;</span></code>),
+<code class="docutils literal notranslate"><span class="pre">Grid_RowNum</span></code>, <code class="docutils literal notranslate"><span class="pre">Grid_ColNum</span></code> (0-based, 8 × 12) and <code class="docutils literal notranslate"><span class="pre">Metadata_Strain</span></code>.
+Join it to <a class="reference internal" href="phenotypic.data.load_example_measurements.html#phenotypic.data.load_example_measurements" title="phenotypic.data.load_example_measurements"><code class="xref py py-func docutils literal notranslate"><span class="pre">load_example_measurements()</span></code></a> on image name and grid
+position; a well with no measurement row had no colony detected.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The metadata table, 2,016 rows (21 images × 96 wells).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.1)">pandas.DataFrame</a></p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_example_metadata</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GENETIC</span><span class="p">,</span> <span class="n">GRID</span><span class="p">,</span> <span class="n">IMAGE</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">meta</span> <span class="o">=</span> <span class="n">load_example_metadata</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">meta</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="o">==</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="nb">str</span><span class="p">(</span><span class="n">IMAGE</span><span class="o">.</span><span class="n">IMAGE_NAME</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">GENETIC</span><span class="o">.</span><span class="n">STRAIN</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">]</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="py function">
