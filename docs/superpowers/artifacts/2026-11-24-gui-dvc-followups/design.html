@@ -1,0 +1,1561 @@
+<title>GUI Follow-ups</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: sticky contents rail beside one reading column; the rail folds above the text on phones. */
+:root {
+  --bg: #FBFEF8; --surface: #ffffff; --fg: #2e3a4e; --heading: #003660; --muted: #6d7684;
+  --border: #dde3ed; --rule: #e8ecf2; --accent: #1b73b9; --gold: #926a00; --code-bg: #edf2f7;
+  --ok: #006B4F; --ok-soft: #e3f4ee;
+  --sans: "Nunito Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1620; --surface: #152132; --fg: #d3dae5; --heading: #a9cdf0; --muted: #94a0b2;
+  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --gold: #f2c75c; --code-bg: #1a2839;
+  --ok: #43c9a2; --ok-soft: #12352c; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1620; --surface: #152132; --fg: #d3dae5; --heading: #a9cdf0; --muted: #94a0b2;
+  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --gold: #f2c75c; --code-bg: #1a2839;
+  --ok: #43c9a2; --ok-soft: #12352c; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 16px; line-height: 1.62; }
+.wrap { max-width: 80rem; margin: 0 auto; padding-block: 2.25rem 4rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; grid-template-columns: 16rem minmax(0, 1fr); gap: 2.5rem; align-items: start; }
+header.top { grid-column: 1 / -1; display: flex; flex-direction: column; gap: .6rem; border-bottom: 1px solid var(--rule); padding-bottom: 1.25rem; }
+.eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
+header.top h1 { margin: 0; font-size: clamp(1.9rem, 4vw, 2.5rem); line-height: 1.1; letter-spacing: -.02em; color: var(--heading); text-wrap: balance; }
+.meta { font-size: .9rem; color: var(--muted); display: flex; flex-direction: column; gap: .2rem; }
+.meta p { margin: 0; max-width: none; }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 1rem); max-height: calc(100vh - 2rem); overflow-y: auto; font-size: .86rem; }
+nav.toc b { display: block; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: .9rem 0 .35rem; }
+nav.toc b:first-child { margin-top: 0; }
+nav.toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .15rem; }
+nav.toc li.l3 { padding-left: .9rem; font-size: .82rem; }
+nav.toc a { color: var(--fg); text-decoration: none; display: block; padding: .08rem 0; }
+nav.toc li.l2 > a { color: var(--heading); font-weight: 700; margin-top: .3rem; }
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main { min-width: 0; max-width: 56rem; display: flex; flex-direction: column; gap: .9rem; }
+section.doc { display: flex; flex-direction: column; gap: .9rem; }
+section.doc + section.doc { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 3px solid var(--rule); }
+.doctitle { font-size: 1.7rem; color: var(--heading); margin: 0; line-height: 1.15; }
+.docsrc { font-family: var(--mono); font-size: .78rem; color: var(--muted); }
+main h2 { font-size: 1.45rem; line-height: 1.2; color: var(--heading); margin: 2rem 0 .2rem; padding-top: 1rem; border-top: 1px solid var(--rule); text-wrap: balance; }
+main h3 { font-size: 1.12rem; color: var(--heading); margin: 1.4rem 0 0; }
+main h4 { font-size: 1rem; color: var(--heading); margin: 1rem 0 0; }
+main p, main li { max-width: 72ch; }
+main p { margin: 0; }
+main ul, main ol { margin: 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .4rem; }
+main li > ul, main li > ol { margin-top: .3rem; }
+main strong { color: var(--heading); }
+main ul.task-list, main li.task-list-item { list-style: none; }
+main input[type="checkbox"] { margin-right: .45rem; accent-color: var(--ok); }
+code { font-family: var(--mono); font-size: .84em; background: var(--code-bg); padding: .06em .32em; border-radius: 4px; overflow-wrap: anywhere; }
+pre { margin: .2rem 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .9rem 1rem; overflow-x: auto; font-size: .8rem; line-height: 1.55; }
+pre code { background: none; padding: 0; overflow-wrap: normal; font-size: inherit; }
+blockquote { margin: 0; padding: .6rem 1rem; border-left: 4px solid var(--gold); background: var(--surface); border-radius: 0 6px 6px 0; }
+.scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin: .2rem 0; }
+table { border-collapse: collapse; width: 100%; font-size: .87rem; min-width: 36rem; }
+th, td { text-align: left; vertical-align: top; padding: .55rem .7rem; border-bottom: 1px solid var(--rule); }
+th { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { color: var(--heading); font-weight: 600; }
+footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 1rem; }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+  nav.toc { position: static; max-height: none; border: 1px solid var(--border); border-radius: 8px; padding: .8rem 1rem; background: var(--surface); }
+  nav.toc li.l3 { display: none; }
+}
+</style>
+<div class="wrap">
+<header class="top"><div class="eyebrow">Design spec · PhenoTypic #283 · 2026-11-24</div><h1>Design: GUI follow-ups for #281 (DVC, TSV, per-pipeline tables) and #282 (Stage 4)</h1><div class="meta"><p><strong>Status:</strong> draft for review · 2026-11-24 · revised 2026-11-24 with the user's answers to</p>
+<p>the eight open questions (§10 lists what they settled)</p>
+<p><strong>Issue:</strong> #283 (PR A); the #282 GUI items (PR B)</p>
+<p><strong>Bases, read for every citation below:</strong></p>
+<ul>
+<li><p><strong>PR A:</strong> <code>origin/feat/dvc-embeddings-refactor</code> @ <code>36b9e840e</code> (#281). This branch is</p>
+<p><code>feat/gui-dvc-followups</code>, worktree <code>.claude/worktrees/gui-followups</code>. PR A is built here</p>
+<p>and targets <code>main</code> after #281 merges (§1, D5).</p></li>
+<li><p><strong>PR B:</strong> <code>origin/feat/gpu-embedding-staging</code> @ <code>0993c8e06</code> (#282).</p>
+<ul>
+<li><p>#281 is an ancestor of #282.</p></li>
+<li><p>#282 changes nothing under <code>src/phenotypic/_gui/</code> or in <code>sdk_/_exit_codes.py</code></p>
+<p>relative to #281, so a PR A citation of GUI code holds on #282 too.</p></li>
+<li><p>Line numbers differ between the bases. Each PR B citation below is at <code>0993c8e06</code>.</p></li>
+</ul></li>
+</ul>
+<p><strong>Scope</strong> was decided by the user on 2026-11-24: two PRs, plus one follow-up issue that is</p>
+<p>drafted here but not opened. The user's answers the same day widened both PRs (§10).</p>
+<p>Each judgement call of mine is marked <strong>[call]</strong> and collected in §9. The user's decisions</p>
+<p>are cited as <strong>D1–D8</strong> (§10). New questions only the user can answer are in §11.</p>
+</div></header>
+<nav class="toc" aria-label="Contents"><b>GUI Follow-ups</b><ul><li class="l2"><a href="#1-intent">1. Intent</a></li><li class="l2"><a href="#2-goals-non-goals-anti-goals">2. Goals, non-goals, anti-goals</a></li><li class="l3"><a href="#21-goals">2.1 Goals</a></li><li class="l3"><a href="#22-non-goals">2.2 Non-goals</a></li><li class="l3"><a href="#23-anti-goals-failure-even-if-everything-works">2.3 Anti-goals (failure even if everything "works")</a></li><li class="l2"><a href="#3-what-the-code-does-today-verified">3. What the code does today (verified)</a></li><li class="l3"><a href="#31-exit-code-4-does-not-fail-every-slurm-launch-its-effect-is-narrower-and-worse">3.1 Exit code 4 does not fail every SLURM launch. Its effect is narrower, and worse</a></li><li class="l3"><a href="#32-complete-with-failures-has-no-representation-anywhere-in-the-gui">3.2 "Complete with failures" has no representation anywhere in the GUI</a></li><li class="l3"><a href="#33-two-of-the-13-reds-are-stale-tests-and-one-needs-a-test-edit-as-well-as-code">3.3 Two of the 13 reds are stale tests, and one needs a test edit as well as code</a></li><li class="l3"><a href="#34-measure-mode-in-the-cli-for-pb5-at-0993c8e06">3.4 Measure mode in the CLI (for PB5), at 0993c8e06</a></li><li class="l2"><a href="#4-pr-a-gui-follow-up-for-281-closes-283">4. PR A: GUI follow-up for #281 (closes #283)</a></li><li class="l3"><a href="#pa1-the-slurm-submission-exit-code">PA1. The SLURM submission exit code</a></li><li class="l3"><a href="#pa2-the-results-viewer-table-path">PA2. The results viewer table path</a></li><li class="l3"><a href="#pa3-the-13-expected-red-tests">PA3. The 13 expected-red tests</a></li><li class="l3"><a href="#pa4-exit-3-reads-complete-n-images-failed">PA4. Exit 3 reads "complete, N images failed"</a></li><li class="l3"><a href="#pa5-tsv-exports-and-mirror-readers">PA5. TSV exports and mirror readers</a></li><li class="l3"><a href="#pa6-the-typed-config-suffixes">PA6. The typed config suffixes</a></li><li class="l3"><a href="#pa7-ledgers-tutorial-text-and-screenshots-the-gui-tutorial-capture-skill">PA7. Ledgers, tutorial text and screenshots (the gui-tutorial-capture skill)</a></li><li class="l3"><a href="#pa8-measurementscsv-retirement-d1">PA8. measurements.csv retirement (D1)</a></li><li class="l3"><a href="#pa9-tsv-capable-metadata-pickers-and-readers-d8">PA9. TSV-capable metadata pickers and readers (D8)</a></li><li class="l3"><a href="#pa10-curation-of-a-complete_with_failures-run-d2">PA10. Curation of a complete_with_failures run (D2)</a></li><li class="l2"><a href="#5-pr-b-run-console-stage-4-and-measure-mode-282-gui-items">5. PR B: run-console Stage 4 and measure mode (#282 GUI items)</a></li><li class="l3"><a href="#pb1-an---embed-stage-control">PB1. An --embed-stage control</a></li><li class="l3"><a href="#pb2-gpu-section-visibility-matches-the-clis-resolution">PB2. GPU section visibility matches the CLI's resolution</a></li><li class="l3"><a href="#pb3-stage-4-refusals-in-rc-staged-gpu-refusal">PB3. Stage-4 refusals in rc-staged-gpu-refusal</a></li><li class="l3"><a href="#pb4-ledgers-tutorial-text-and-screenshots">PB4. Ledgers, tutorial text and screenshots</a></li><li class="l3"><a href="#pb5-measure-mode-in-the-run-console-d6">PB5. Measure mode in the run console (D6)</a></li><li class="l2"><a href="#6-test-strategy">6. Test strategy</a></li><li class="l2"><a href="#7-risks">7. Risks</a></li><li class="l2"><a href="#8-follow-up-issue-draft-not-to-be-opened-by-this-work">8. Follow-up issue (draft, not to be opened by this work)</a></li><li class="l2"><a href="#9-my-judgement-calls-for-review">9. My judgement calls (for review)</a></li><li class="l2"><a href="#10-decisions-user-2026-11-24">10. Decisions (user, 2026-11-24)</a></li><li class="l2"><a href="#11-open-questions-only-the-user-can-answer">11. Open questions (only the user can answer)</a></li></ul></nav>
+<main><section class="doc"><h2 id="1-intent">1. Intent</h2>
+<p>#281 changed the CLI's contract in ways the GUI still reads the old way. It also deliberately made no change under <code>src/phenotypic/_gui/</code> (its spec, §2.2). #282 added a GPU Stage 4 for embeddings that the GUI cannot reach.</p>
+<p><strong>PR A</strong> makes the GUI read #281's contract:</p>
+<ul>
+<li>exit codes <code>3</code> and <code>4</code>;</li>
+<li>per-pipeline table folders;</li>
+<li>TSV;</li>
+<li>the <code>*.pht-*.json</code> suffixes.</li>
+</ul>
+<p>It also:</p>
+<ul>
+<li>turns the 13 GUI tests #281 left red back to green;</li>
+<li>retires <code>measurements.csv</code>, which means a CLI change (D1);</li>
+<li>lets a run that finished with failed images be curated (D2);</li>
+<li>lets every metadata picker take a <code>.tsv</code> (D8).</li>
+</ul>
+<p><strong>PR B</strong> lets the run console reach Stage 4:</p>
+<ul>
+<li>an <code>--embed-stage</code> control;</li>
+<li>a GPU section shown whenever the CLI would use it;</li>
+<li>Stage-4 refusals shown the way the staged-GPU refusal already is;</li>
+<li><code>--mode measure</code> (D6).</li>
+</ul>
+<p><strong>Sequencing (D5).</strong></p>
+<ol type="1">
+<li><strong>Now.</strong> PR A is built on #281's branch.</li>
+<li><strong>#281 merges to <code>main</code> first.</strong> PR A targets <code>main</code> after that.</li>
+<li><strong>Before PR A is opened:</strong>
+<ul>
+<li><code>git fetch origin</code> and rebase <code>feat/gui-dvc-followups</code> onto the latest <code>origin/main</code>, which will by then contain #281;</li>
+<li>re-verify every PR A citation in this spec against the rebased tree. Line numbers will move. A cited behaviour that changed is a spec change, not a plan detail.</li>
+</ul></li>
+<li><strong>PR B is cut only after #282 has been rebased or merged onto a <code>main</code> that contains PR A.</strong> PR B needs PA1, because a Stage-4 SLURM submission exits <code>4</code> like any other, and it needs PA4's status helper (PB5).</li>
+</ol>
+<p>This reverses #281's own merge gate ("#281 does not merge to <code>main</code> before #283 fixes these", #281 spec §2.2). Between the two merges <code>main</code> carries the breaks in §3. See §7 R9 and §11 Q1.</p>
+<hr />
+<h2 id="2-goals-non-goals-anti-goals">2. Goals, non-goals, anti-goals</h2>
+<h3 id="21-goals">2.1 Goals</h3>
+<ul>
+<li><p><strong>G1.</strong> A SLURM launch the CLI queued is shown as queued, in every case.</p>
+<ul>
+<li>No queued run reads as failed.</li>
+<li>The GUI never cancels a generation because the submitter exited <code>4</code>.</li>
+</ul></li>
+<li><p><strong>G2.</strong> A run that exits <code>3</code> (<code>COMPLETE_WITH_FAILURES</code>) reads "complete, N images failed" wherever the GUI states a run's outcome:</p>
+<ul>
+<li>Recent Runs;</li>
+<li>the run banner;</li>
+<li>the results-viewer and analysis snapshot badge (D3).</li>
+</ul>
+<p>It reads the same whether the run was local or SLURM.</p></li>
+<li><p><strong>G2b (D2).</strong> Such a run can be curated. Its failed images have no rows, and curating it leaves every enforced run-proof descriptor valid.</p></li>
+<li><p><strong>G3.</strong> The Colony picker and the measurement routes read a v2 store's latest measuring run, <code>tables/&lt;n&gt;-&lt;sha12&gt;/measurements/table.parquet</code>, and still read a v1 store.</p></li>
+<li><p><strong>G4.</strong> The 13 expected-red tests (#282 plan README) are green, through the fix each one needs. No <code>xfail</code> and no skip.</p></li>
+<li><p><strong>G5.</strong> Every tabular text file PhenoTypic writes for the mirror or the GUI is TSV:</p>
+<ul>
+<li><code>measurements.csv</code> is no longer written (D1);</li>
+<li>every reader prefers <code>.tsv</code> and falls back to <code>.csv</code> in an older tree;</li>
+<li>an older tree's generated <code>measurements.csv</code> is retired after the TSV is published.</li>
+</ul></li>
+<li><p><strong>G5b (D8).</strong> Every metadata picker and table reader in the GUI accepts <code>.tsv</code> wherever the CLI does.</p></li>
+<li><p><strong>G6.</strong> Every GUI surface that lists, filters, loads or writes a typed config agrees with the sdk_ suffix sets:</p>
+<ul>
+<li>the new <code>.pht-*.json</code> names are written;</li>
+<li>the old <code>.json.pht-*</code> names are still read;</li>
+<li>a tune spec is never listed as a pipeline.</li>
+</ul></li>
+<li><p><strong>G7 (PR B).</strong> A pipeline that can run Stage 4 can be launched with Stage 4 from the GUI, with the same resolution the CLI applies, in full and measure mode.</p></li>
+<li><p><strong>G8 (PR B).</strong> Every Stage-4 refusal the GUI can know before launch is shown in <code>rc-staged-gpu-refusal</code>, with Run disabled. The text is the CLI's own message.</p></li>
+<li><p><strong>G9.</strong> <code>FEATURES.md</code>, <code>WORKFLOWS.md</code>, the tutorial text and the tutorial screenshots match the shipped chrome.</p></li>
+</ul>
+<h3 id="22-non-goals">2.2 Non-goals</h3>
+<ul>
+<li><strong>The follow-up issue (§8)</strong>, drafted here, not opened:
+<ul>
+<li>the results-viewer run picker;</li>
+<li>the DVC <code>dvc commit</code> hint;</li>
+<li>an embeddings view.</li>
+</ul></li>
+<li><strong>Tune runs' exit codes.</strong> <code>phenotypic.tune</code> does not use <code>RunExitCode</code> at #281: there is no reference under <code>src/phenotypic/tune/</code>, and its exits are <code>SystemExit(message)</code> at <code>tune/__main__.py:236</code> and <code>tune/_tune_cli/_worker.py:97,102</code>. The tune monitor's reap logic (<code>_gui/tune/_callbacks.py:741-745</code>) is therefore unchanged.</li>
+<li><strong>Claiming a CLI-launched run that has failures, for <code>--retry-failures</code>.</strong> It stays refused (D2). The refusal is <code>_foreign_run_conflict</code>, <code>shell/_runs_registry.py:1407-1480</code>.</li>
+<li><strong><code>--mode recompile</code>, <code>process</code> and <code>migrate</code> in the run console.</strong> PR B adds <code>measure</code> only (D6).</li>
+<li><strong>Changing <code>resolve_run_state</code>'s <code>Completion</code> literals, or the CLI's exit codes.</strong></li>
+<li><strong>A tutorial screenshot of the new status (D4).</strong> It is documented in tutorial text instead.</li>
+</ul>
+<h3 id="23-anti-goals-failure-even-if-everything-works">2.3 Anti-goals (failure even if everything "works")</h3>
+<ul>
+<li>A queued SLURM run shown as failed, or a submission's generation cancelled by the GUI.</li>
+<li>A run shown as complete when an accepted image has neither a success nor a terminal-failure record.</li>
+<li>A curation write that makes an enforced proof descriptor (master, <code>metrics.json</code>, <code>schema.json</code>) stop matching, or that changes the run's verdict.</li>
+<li>A curated <code>measurements.tsv</code> that disagrees with <code>measurements.parquet</code> after a curation write that reported success.</li>
+<li>A GUI-side copy of a CLI decision rule (Stage-4 resolution, a refusal condition, the "finished with failures" verdict, measure's argument rules) that can drift from the CLI's.</li>
+<li>A test made green by deleting or weakening the property it pins.</li>
+<li>A legacy <code>.json.pht-*</code> config, or a legacy <code>measurements.csv</code> tree, that the GUI used to open and no longer can.</li>
+<li>An argv the GUI builds that the CLI refuses as a usage error.</li>
+</ul>
+<hr />
+<h2 id="3-what-the-code-does-today-verified">3. What the code does today (verified)</h2>
+<h3 id="31-exit-code-4-does-not-fail-every-slurm-launch-its-effect-is-narrower-and-worse">3.1 Exit code 4 does not fail every SLURM launch. Its effect is narrower, and worse</h3>
+<p>#283 says <code>_slurm.py:826</code> "treats any non-zero exit as a failed submission". That is true of the branch at <code>:826</code>, but not of the outcome. Every non-zero exit sets <code>ambiguous_error</code> (<code>run_console/_slurm.py:826-831</code>), and <code>submit_slurm</code> then runs the recovery path that was built for timeouts: <code>_reconcile_submission</code> (<code>:642-743</code>, called at <code>:837-841</code>).</p>
+<p>I probed <code>submit_slurm</code> at <code>36b9e840e</code> with the submitter mocked:</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Case</th>
+<th>Submitter exit</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Legacy <code>chunk_job_ids</code> manifest</td>
+<td>4</td>
+<td><code>SlurmSubmitResult</code>, <code>reconciled=True</code></td>
+</tr>
+<tr class="even">
+<td>Lifecycle active, job ledgered</td>
+<td>4</td>
+<td><code>SlurmSubmitResult</code>, <code>reconciled=True</code></td>
+</tr>
+<tr class="odd">
+<td>Lifecycle <strong>inactive</strong></td>
+<td>4</td>
+<td><strong><code>cancel_generation</code> called</strong>, then <code>SlurmSubmitError("…exited with code 4")</code></td>
+</tr>
+<tr class="even">
+<td>No job recorded</td>
+<td>4</td>
+<td><code>SlurmSubmitError("…exited with code 4")</code></td>
+</tr>
+<tr class="odd">
+<td>Nothing submitted (all done)</td>
+<td>3</td>
+<td><code>SlurmSubmitError("…exited with code 3")</code></td>
+</tr>
+<tr class="even">
+<td>Nothing submitted (all done)</td>
+<td>0</td>
+<td><code>SlurmSubmitError("…exited cleanly but … contain no submitted jobs")</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>What that means in practice:</strong></p>
+<ul>
+<li><strong>The ordinary case reaches <code>queued</code>.</strong> But every submission is now labelled <code>reconciled</code>, which erases the signal that something went wrong.</li>
+<li><strong>If the scheduler evidence is slow to land, a queued run reads <code>failed</code>.</strong> The registry takes <code>status="failed"</code> from the <code>except Exception</code> arm at <code>run_console/_callbacks.py:1086-1114</code>.</li>
+<li><strong>If the fence reads inactive, the GUI cancels its own generation.</strong> The branch is <code>_slurm.py:652-656</code>.</li>
+<li><strong>A SLURM-mode run with nothing left to do never submits, and exits <code>0</code> or <code>3</code>.</strong> Today it either fails or binds to the <em>previous</em> generation's job set:
+<ul>
+<li>The exits come from <code>phenotypicCLI.py:3897-3899</code>, <code>:3964</code> and <code>:4165-4225</code>. The code at <code>:4165</code> reads <code>if results.submitted: … sys.exit(RunExitCode.SUBMITTED)</code>, and otherwise the run finished in-process.</li>
+<li>The stale binding is in <code>read_submitted_job_set</code>. With no <code>expected_generation</code> (<code>_slurm.py:372-432</code>), <code>_generation_for</code> (<code>:234-261</code>) prefers the lifecycle on disk.</li>
+<li>The exit-<code>0</code> half predates #281. The exit-<code>3</code> half is new: the earlier run's fence is inactive, so the same branch calls <code>cancel_generation</code> on that finished generation.</li>
+</ul></li>
+</ul>
+<p><strong>Every place the GUI reads a process exit code:</strong></p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Site</th>
+<th>Reads</th>
+<th>At #281</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>run_console/_slurm.py:813-831</code></td>
+<td>the <code>python -m phenotypic</code> submitter</td>
+<td><strong>changes</strong> (PA1)</td>
+</tr>
+<tr class="even">
+<td><code>shell/_runs_registry.py:636-688</code> <code>observe_local_exit</code> (<code>:661</code>)</td>
+<td>local and validate <code>python -m phenotypic</code></td>
+<td><strong>changes</strong> (PA4)</td>
+</tr>
+<tr class="odd">
+<td><code>run_console/_callbacks.py:2081-2090, 2192-2197</code></td>
+<td>forward to <code>observe_local_exit</code></td>
+<td>no logic</td>
+</tr>
+<tr class="even">
+<td><code>run_console/_runner.py:410, 460-466</code></td>
+<td>process mechanics only</td>
+<td>none</td>
+</tr>
+<tr class="odd">
+<td><code>run_console/_slurm_observer.py:189</code></td>
+<td><code>squeue</code>'s exit, not the CLI's</td>
+<td>none</td>
+</tr>
+<tr class="even">
+<td><code>tune/_callbacks.py:691-697, 741-745</code></td>
+<td><code>phenotypic.tune</code></td>
+<td>unchanged (§2.2)</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>Validate is unaffected.</strong> It always runs locally through the runner, even in SLURM mode (<code>run_console/_callbacks.py:2064-2104</code>, <code>:392-408</code>). A dry run exits <code>0</code> (<code>phenotypicCLI.py:3474-3482</code>), and a refusal exits <code>2</code>.</li>
+<li><strong>The fixed codes</strong> are in <code>RunExitCode</code> (<code>sdk_/_exit_codes.py:42-47</code>): <code>0</code> COMPLETE, <code>1</code> ERROR, <code>3</code> COMPLETE_WITH_FAILURES, <code>4</code> SUBMITTED, <code>5</code> ENDED_UNPUBLISHED and <code>6</code> WAIT_TIMEOUT. <code>5</code> and <code>6</code> come only from <code>phenotypic-wait</code>, which the GUI never runs.</li>
+</ul>
+<h3 id="32-complete-with-failures-has-no-representation-anywhere-in-the-gui">3.2 "Complete with failures" has no representation anywhere in the GUI</h3>
+<ul>
+<li><strong>Local.</strong> <code>observe_local_exit</code> maps every non-zero exit to <code>failed</code> (<code>shell/_runs_registry.py:661-663</code>).</li>
+<li><strong>SLURM.</strong> A run with any terminal failure never gets a run proof. <code>publish_run_completion_evidence</code> raises unless every accepted image succeeded (<code>_cli/_cli_completion.py:1304-1342</code>). The observer therefore reaches the "inactive, no marker" branch and reports <code>failed</code>, with "lifecycle ended terminal-incomplete without a current run-completion marker" (<code>run_console/_slurm_observer.py:661-671</code>).</li>
+<li><strong>Boot rehydration.</strong> <code>resolve_run_state(...).completion</code> is <code>"failed"</code> for such a run (<code>sdk_/_run_state.py:1922-1934</code>), and <code>_rehydrated_status</code> passes it through (<code>shell/_runs_registry.py:1026-1104</code>).</li>
+<li><strong>The viewer and analysis snapshot badge</strong> reads "Run failed" (<code>_gui/_snapshot_status.py:47-50</code>).</li>
+<li><strong>Curation is refused.</strong> Every write-authority check asks <code>completion == "complete"</code>:
+<ul>
+<li><code>_mutation_guard.py:38-45</code>, used at <code>:121, 140, 170, 216</code>;</li>
+<li><code>OutputRoot.run_is_complete</code>, <code>_output_root.py:700-713</code>;</li>
+<li><code>mutation_snapshot_is_safe</code>, <code>:780-797</code>;</li>
+<li>the processing-inventory reuse rule, <code>_processing_inventory.py:97</code>. Only a reusable inventory is <code>"exhaustive"</code> (<code>:130-145</code>), and the guard refuses a non-exhaustive one (<code>_mutation_guard.py:127-131</code>).</li>
+</ul></li>
+</ul>
+<p><code>phenotypic-wait</code> already decides "complete with failures" from disk, in <code>decide_wait_outcome</code> (<code>_cli/_cli_wait.py:309-366</code>), rule 3: completion <code>failed</code>, no unresolved image, and published. Its seams are:</p>
+<ul>
+<li><code>_run_snapshot</code> (<code>:116-130</code>);</li>
+<li><code>_published</code> (<code>:182-242</code>);</li>
+<li><code>_cancelled</code> (<code>:245-266</code>);</li>
+<li><code>_generation_failures</code> (<code>:269-285</code>);</li>
+<li><code>_is_process_run</code> (<code>:288-301</code>).</li>
+</ul>
+<p><strong>Two aggregate-proof checks disagree about the curated mirror, and that matters for D2:</strong></p>
+<ul>
+<li><strong><code>valid_aggregate_snapshot</code></strong> (<code>_cli/_cli_completion.py:1271-1301</code>) hashes <strong>every</strong> <code>required_outputs</code> descriptor, so it returns <code>None</code> after any curation write.</li>
+<li><strong><code>aggregate_proof_is_current</code></strong> (<code>sdk_/_run_state.py:1415-1433</code>, exported) skips the GUI-written descriptors in <code>_GUI_WRITTEN_PROOF_DESCRIPTORS</code> (<code>:1331-1333</code>, checked at <code>:1369-1371</code>).</li>
+</ul>
+<p>The waiter's <code>_published</code> uses the strict one as its third disjunct (<code>_cli_wait.py:238-242</code>).</p>
+<h3 id="33-two-of-the-13-reds-are-stale-tests-and-one-needs-a-test-edit-as-well-as-code">3.3 Two of the 13 reds are stale tests, and one needs a test edit as well as code</h3>
+<p>I ran all 13 at <code>36b9e840e</code> (Slurm job 32434046, log <code>/bigdata/exfab/anguy344/gate-results/guispec/reds-32434046.log</code>). All 13 fail as listed. <code>test_measurement_join_migration_run.py</code> <strong>skipped</strong> 5 tests: the live run at <code>…/ucr_029_e_d_Maresca/data/results/2026-08-11-migration-test</code> is absent or mid-republish.</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Test</th>
+<th>Failure observed</th>
+<th>What makes it green</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td><code>tests/unit/gui/tune/test_validation.py::test_tuning_spec_path_is_deployable</code></td>
+<td><code>spec_path_issue("tuning_spec.json.pht-tune")</code> returns the Deploy issue</td>
+<td><strong>code</strong>: <code>_gui/tune/_validation.py:61</code> accepts the legacy tune suffix (PA6)</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td><code>…/test_setup_authoring.py::test_write_authored_setup_spec_preserves_existing_spec_search_space</code></td>
+<td><code>ValueError: No active knobs to tune.</code> A legacy <code>existing.json.pht-tune</code> is loaded as an <code>ImagePipeline</code></td>
+<td><strong>code</strong>: <code>_setup_authoring.py:356</code> <code>load_pipeline_or_spec</code> recognises the legacy tune suffix (PA6)</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td><code>…/test_setup_authoring.py::test_existing_spec_replaces_scorer_only_when_requested</code></td>
+<td>same cause, surfacing as the in-memory-layout scorer error</td>
+<td><strong>code</strong>: same</td>
+</tr>
+<tr class="even">
+<td>4–6</td>
+<td><code>tests/integration/gui/tune/test_setup_view.py::{test_existing_spec_controls_preserve_seed_budget_and_storage, test_existing_spec_trial_override_preserves_authored_strategy, test_existing_grid_spec_never_emits_trial_override}</code></td>
+<td>the Deploy issue names <code>.json.pht-tune</code></td>
+<td><strong>code</strong>: #1 and #2</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td><code>tests/unit/gui/test_curation_does_not_unfence_the_run.py::test_the_proof_still_records_every_published_artifact</code></td>
+<td><code>required_outputs</code> holds <code>measurements_tsv</code>; the test pins the pre-TSV set (<code>:135-139</code>)</td>
+<td><strong>test</strong>: the set becomes <code>{"master_parquet", "measurements_tsv", "measurements_parquet"}</code>. <code>measurements_csv</code> leaves it because PA8 stops writing that file. The test's own docstring says the proof is "a complete record of what finalization published"</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td><code>tests/unit/gui/results_viewer/test_measurement_routes.py::test_an_undeclared_column_never_opens_the_parquet</code></td>
+<td><code>FileNotFoundError</code> from unlinking <code>store / MEASUREMENT_TABLE_RELATIVE_PATH</code> (<code>:205</code>), a v1 path no v2 store has</td>
+<td><strong>test</strong>: unlink the latest run's payload. The route already reads through <code>read_embedded_measurement_column</code> (<code>_measurement_routes.py:60,107</code>)</td>
+</tr>
+<tr class="odd">
+<td>9–12</td>
+<td><code>…/test_measurement_source.py::{test_the_picker_offers_the_stores_own_numeric_columns, test_one_unmeasured_image_does_not_empty_the_picker, test_values_are_keyed_by_dataset_image_and_object_label, test_an_unmeasured_image_contributes_no_keys}</code></td>
+<td>the picker offers nothing (<code>'Size_Area' in ()</code>), and no values come back</td>
+<td><strong>code</strong>: <code>_measurement_source.py:107-108</code> (PA2)</td>
+</tr>
+<tr class="even">
+<td>13</td>
+<td><code>…/test_measurement_source.py::test_a_rewritten_table_is_read_fresh</code></td>
+<td>the same, and the test itself rewrites the v1 path (<code>:247-249</code>)</td>
+<td><strong>code and test</strong>: PA2, plus the test locates the payload the way the code does</td>
+</tr>
+</tbody>
+</table></div>
+<p>Probe at <code>36b9e840e</code>: <code>Image.save2zarr(store, measurement_table=…)</code> writes <code>tables/1-unknown/measurements/table.parquet</code>. The v1 <code>tables/measurements/table.parquet</code> does not exist, and <code>latest_measurement_run(store).run_id == "1-unknown"</code>.</p>
+<p><strong>[call]</strong> For #7 and #8 the test's expectation is stale and the code is correct. The brief asks for "the code fix that each red really needs", and here that is the test edit. Each edit must keep the property its test pins:</p>
+<ul>
+<li>#7 still pins the exact set;</li>
+<li>#8 still deletes the payload before the request, so read-before-validate is still caught.</li>
+</ul>
+<h3 id="34-measure-mode-in-the-cli-for-pb5-at-0993c8e06">3.4 Measure mode in the CLI (for PB5), at <code>0993c8e06</code></h3>
+<p><strong>Refusals, all <code>click.UsageError</code>, exit 2:</strong></p>
+<ul>
+<li><strong><code>--input</code>:</strong> "does not accept --input; it discovers inputs from the existing output directory" (<code>phenotypicCLI.py:2801-2806</code>).</li>
+<li><strong><code>--dry-run</code>:</strong> "--dry-run cannot be combined with --mode measure" (<code>:2811-2814</code>).</li>
+<li><strong><code>--restart</code>, <code>--retry-failures</code>, <code>--overwrite</code>, <code>--sample</code>:</strong> refused at <code>:3089-3119</code> (messages at <code>:3095, 3101, 3108, 3115</code>).</li>
+<li><strong>No <code>--pipeline</code>:</strong> refused at <code>:3121-3123</code>.</li>
+<li><strong>An <code>--output</code> that does not exist:</strong> refused at <code>:3124-3130</code>.</li>
+<li><strong>A pipeline whose measurers read reference metadata:</strong> refused, un-skippably (<code>_refuse_measuring_reference_pipeline</code>, <code>:761-773</code>, called at <code>:3150-3151</code>).</li>
+<li><strong>Both <code>metadata.csv</code> and <code>metadata.tsv</code> in the output:</strong> refused (<code>_refuse_ambiguous_metadata_snapshot</code>, <code>:3227-3230</code>).</li>
+</ul>
+<p><strong>What it accepts:</strong></p>
+<ul>
+<li><strong><code>--metadata</code>.</strong> It is used for the join, but never snapshotted: the snapshot step skips <code>measure_only</code> (<code>:1331</code>).</li>
+<li><strong><code>--nrows</code>, <code>--ncols</code>, <code>--image-type</code>, <code>--njobs</code>, <code>--slurm</code>, <code>--gpu-slurm</code>, <code>--gpu-shards</code> and <code>--embed-stage</code>.</strong> None of these is refused for measure.</li>
+</ul>
+<p><strong>What it runs on.</strong> It discovers stores with <code>scan_store_outputs(output_dir)</code>; a <code>ValueError</code> there exits <code>1</code> (<code>:3513-3520</code>). It is never a continuation: <code>continuing = not measure_only and …</code> (<code>:3242-3248</code>), and <code>resume=continuing</code> (<code>:3287</code>). So R3 and the U12 refusal, which sit under <code>if config.resume:</code>, never apply to measure.</p>
+<p><strong>The unstageable-<code>GpuDetector</code> refusal does not apply in measure.</strong> <code>uses_staged_gpu_strategy</code> returns <code>False</code> for <code>measure_only</code> before it looks at the pipeline (<code>_cli_execution_strategies.py:1546-1549</code>). A SLURM measure that embeds on the GPU runs on the staged controller (<code>uses_staged_controller</code>, <code>:1561-1574</code>, #282 U10).</p>
+<p><strong>Outcomes:</strong></p>
+<ul>
+<li><strong>Exit <code>0</code>:</strong> "Exit 0 means every image really was re-measured and re-embedded" (#282 U16).</li>
+<li><strong>Exit <code>3</code>:</strong> measure failures. A Stage-4 failure keeps the old embeddings and is journalled (U8).</li>
+<li><strong>Exit <code>1</code>:</strong> local leftovers (U16).</li>
+<li><strong>Exit <code>4</code>:</strong> at SLURM submission.</li>
+<li><strong>A SLURM pass with leftovers</strong> ends with the finalizer closing its fence with <code>closed_by: finalizer</code> plus <code>terminal_status: "failed"</code> and <code>terminal_error</code> in one write (<code>mark_generation_failed</code>, <code>_cli_slurm_lifecycle.py:721-751</code>). The error line is <code>unfinished_measure_line</code> (<code>_cli_staged_controller.py:530-538</code>). <code>phenotypic-wait</code> then returns <code>5</code>. The GUI observer never reads <code>terminal_status</code>: <code>grep terminal_status _gui/run_console/_slurm_observer.py</code> finds nothing.</li>
+</ul>
+<hr />
+<h2 id="4-pr-a-gui-follow-up-for-281-closes-283">4. PR A: GUI follow-up for #281 (closes #283)</h2>
+<p>Each item gives the current code, the exact behaviour PR A gives it, and its tests. Citations are at <code>36b9e840e</code> and are re-verified after the rebase onto <code>origin/main</code> (§1).</p>
+<h3 id="pa1-the-slurm-submission-exit-code">PA1. The SLURM submission exit code</h3>
+<p><strong>Behaviour.</strong> <code>submit_slurm</code> (<code>run_console/_slurm.py:746-872</code>) classifies the submitter's exit by <code>RunExitCode</code>, imported from <code>phenotypic.sdk_</code>, before it decides anything else. No literal codes appear in GUI code.</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Exit</th>
+<th>Meaning</th>
+<th>What <code>submit_slurm</code> does</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>SUBMITTED</code> (4)</td>
+<td>queued</td>
+<td>The normal path. No <code>ambiguous_error</code>. Read <code>read_submitted_job_set(output_dir)</code>; when <code>None</code>, reconcile once, as a clean exit does today (<code>:842-866</code>). Return <code>reconciled=False</code> unless reconciliation found the jobs.</td>
+</tr>
+<tr class="even">
+<td><code>COMPLETE</code> (0) / <code>COMPLETE_WITH_FAILURES</code> (3)</td>
+<td>the CLI finished in-process; nothing was submitted</td>
+<td>Return a new <code>SlurmFinishedWithoutSubmission(returncode, output_dir, stdout, stderr)</code> result. Read no job set, bind no generation, never reconcile or cancel.</td>
+</tr>
+<tr class="odd">
+<td><code>-1</code> (timeout), stream error, any other code</td>
+<td>ambiguous</td>
+<td>Unchanged: reconcile, then raise unless durable jobs prove a submission.</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>The 0/3 result in the callback.</strong> <code>_complete_slurm_submission</code> (<code>run_console/_callbacks.py:1030-1201</code>) sets the record terminal. The status is <code>complete</code>, or <code>complete_with_failures</code> with N (PA4). It is decided by the same evidence check as a local exit, with detail "nothing needed SLURM; the run finished in this process". The registry already carries the GUI generation through <code>PHENOTYPIC_GUI_RECORD_GENERATION</code> (<code>_slurm.py:790</code>), so the local evidence check applies unchanged.</li>
+<li><strong>The <code>active is False → cancel_generation</code> branch</strong> (<code>_slurm.py:652-656</code>) stays, for the timeout and stream-error cases it was written for. Exit 4 no longer reaches it.</li>
+</ul>
+<p><strong>Approaches:</strong></p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th></th>
+<th>Approach</th>
+<th>Pro</th>
+<th>Con</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>a</td>
+<td>Treat <code>4</code> like <code>0</code>: <code>returncode not in (0, 4)</code> at <code>:826</code></td>
+<td>one line</td>
+<td>Leaves the 0/3 no-op path wrong (stale binding at 0, failure and possible cancel at 3). Exit 0 still means "submitted" in the GUI, which #281 made false</td>
+</tr>
+<tr class="even">
+<td><strong>b</strong></td>
+<td><strong>Classify by <code>RunExitCode</code> (recommended)</strong></td>
+<td>Matches #281 C10 exactly, and removes the stale-binding bug</td>
+<td>One new result type and one callback arm</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>[call]</strong> Pick (b). In SLURM mode, exit <code>0</code> means "finished without submitting" even when an earlier generation's job set is still on disk. At #281 no SLURM submission exits <code>0</code> (<code>sdk_/_exit_codes.py:25-28</code>).</p>
+<p><strong>Tests</strong> (<code>tests/unit/gui/run_console/test_slurm.py</code>, <code>tests/integration/gui/test_run_console_callbacks.py</code>):</p>
+<ul>
+<li><strong>Exit 4:</strong>
+<ul>
+<li>with a durable job set it returns <code>reconciled=False</code>;</li>
+<li>with an inactive fence it does not call <code>cancel_generation</code>;</li>
+<li>with no job ever recorded it reports one error naming "SUBMITTED".</li>
+</ul></li>
+<li><strong>Exit 0 and 3</strong>, with a previous generation's job set on disk: no binding, no cancel, and a terminal record (<code>complete</code> / <code>complete_with_failures</code>).</li>
+<li><strong>Existing tests stay as they are.</strong> <code>test_submit_slurm_raises_on_non_zero_exit</code> (exit 2) and <code>test_abnormal_exit_cancels_recovered_inactive_generation</code> (exit 2) are unchanged.</li>
+<li><strong>A probe that cannot pass vacuously.</strong> Each mock-based test asserts the <code>cancel_generation</code> mock's call count, so a regression to (a) fails the inactive-fence test.</li>
+<li><strong>Live lane:</strong> <code>tests/integration/gui/test_run_console_slurm_live.py</code> (<code>PHENOTYPIC_RUN_LIVE_SLURM=1</code>, <code>slow</code>) is the only end-to-end proof that a real exit 4 lands <code>queued</code>. Run it once before PR A is opened, after the rebase.</li>
+</ul>
+<h3 id="pa2-the-results-viewer-table-path">PA2. The results viewer table path</h3>
+<p><strong>Today.</strong> <code>_store_and_identity</code> (<code>results_viewer/_measurement_source.py:95-111</code>) stats <code>store / MEASUREMENT_TABLE_RELATIVE_PATH</code> (<code>:107-108</code>), the v1 flat path. A v2 store has no file there, so every image returns <code>None</code>, the picker is empty and no values are read.</p>
+<p>The two readers already target the right table: <code>embedded_measurement_columns</code> and <code>read_embedded_measurement_column</code> (<code>sdk_/_measurement_tables.py:2056, 2084</code>) read the latest measuring run, or a v1 store's flat table.</p>
+<p><strong>Behaviour.</strong> The payload whose identity keys the caches is the payload those readers read:</p>
+<ul>
+<li>the highest-order run holding <code>measurements</code> for a v2 store (#281 D6a);</li>
+<li>the flat table for a v1 store;</li>
+<li><code>None</code> when there is neither.</li>
+</ul>
+<p>Nothing else in the module changes. Its docstrings stop naming the v1 path (<code>_measurement_source.py:8-10, 60</code>).</p>
+<p><strong>Approaches:</strong></p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th></th>
+<th>Approach</th>
+<th>Pro</th>
+<th>Con</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>a</td>
+<td><code>latest_measurement_run(store)</code> (<code>sdk_/_table_runs.py:474</code>, exported), then <code>.measurements_path()</code>; fall back to the v1 path when it returns <code>None</code></td>
+<td>Uses exported names only</td>
+<td>A second copy of "v1 when there are no runs", in the GUI</td>
+</tr>
+<tr class="even">
+<td><strong>b</strong></td>
+<td><strong>Export one sdk_ helper over <code>record_less_measurement_table</code> that returns <code>DeclaredMeasurementTable.relative_path</code> (<code>_table_runs.py:504-546, 586</code>), the one place that knows both layouts (recommended)</strong></td>
+<td>One producer of "which payload does a record-less reader read"; the GUI cannot diverge from the reader</td>
+<td>A new sdk_ export</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>[call]</strong> Pick (b). It is a few lines in sdk_ plus an <code>__init__</code> entry, and it is the "one producer" rule this codebase applies elsewhere.</p>
+<p><strong>Safety, unchanged and to be pinned.</strong> The pixel route allows only the first resolved path component (<code>_gui/_shared/tiles.py:975-1010</code>), and <code>tables</code> is never in the allow-list (<code>results_viewer/_zarr_routes.py:24-32, 270</code>). So <code>tables/&lt;n&gt;-&lt;sha12&gt;/…</code> stays off the wire exactly as the v1 path did. Add one route test for a v2 payload path returning 404/400. Update the docstrings that name the v1 path (<code>_zarr_routes.py:31</code>, <code>tiles.py:986, 1001</code>).</p>
+<p><strong>Tests.</strong></p>
+<ul>
+<li>Reds #9–13.</li>
+<li>One new test for a store with <strong>two</strong> runs, where the picker offers the higher-order run's columns.</li>
+<li>One for a newer <strong>grid-only</strong> run (no <code>measurements</code>), which is skipped.</li>
+<li>A v1-store test, so the fallback is not dead code.</li>
+<li><code>test_measurement_join_migration_run.py</code> reads the v1 path too (<code>:105, 209</code>). It gets the same resolver, but it can only be verified against the live run (§7 R5).</li>
+</ul>
+<h3 id="pa3-the-13-expected-red-tests">PA3. The 13 expected-red tests</h3>
+<p>The table in §3.3 is the plan of record. PA6 turns #1–6 green, PA2 turns #9–13 green, and #7 and #8 are test edits.</p>
+<p><strong>Gate.</strong> All 13 must pass with no <code>xfail</code>, skip or <code>-k</code> exclusion. The affected surface is <code>tests/unit/gui/tune/</code>, <code>tests/integration/gui/tune/</code>, <code>tests/unit/gui/results_viewer/</code> and <code>tests/unit/gui/test_curation_does_not_unfence_the_run.py</code>, and it must be green.</p>
+<h3 id="pa4-exit-3-reads-complete-n-images-failed">PA4. Exit 3 reads "complete, N images failed"</h3>
+<p><strong>Behaviour.</strong> A run whose every accepted image is resolved, with at least one terminal failure and its deliverables published, gets the terminal registry status <code>complete_with_failures</code> and a count <code>failed_images = N</code>. N is the run state's <code>diagnostics.failed</code>, the count the CLI's exit code uses (<code>phenotypicCLI.py:1493-1518</code>).</p>
+<p>It is shown in four places:</p>
+<ul>
+<li><strong>Recent Runs:</strong> <code>complete · N failed</code>.</li>
+<li><strong>The status banner</strong> (<code>update_log_tail</code>, <code>run_console/_callbacks.py:2581-2622</code>): the same text.</li>
+<li><strong>The no-dashboard message</strong> (<code>:2549-2560</code>): the same text.</li>
+<li><strong>The results-viewer and analysis snapshot badge</strong> (D3) (<code>_gui/_snapshot_status.py</code>): "Run complete · N images failed", in the warning colour. It is a new arm in <code>snapshot_refresh_status</code> (<code>:53-128</code>), taken when completion is <code>failed</code> and the helper confirms. <code>_UNFINISHED_BADGE</code> (<code>:47-50</code>) keeps its two literals, so <code>test_every_completion_literal_has_a_badge</code> still binds it to <code>Completion</code>.</li>
+</ul>
+<p><strong>One verdict, four entry points.</strong> A single helper decides "finished with failures":</p>
+<ol type="1">
+<li><strong>A local or SLURM-no-op exit <code>3</code>.</strong> <code>observe_local_exit</code> (<code>shell/_runs_registry.py:661</code>) branches on <code>RunExitCode.COMPLETE_WITH_FAILURES</code>:
+<ul>
+<li>when the helper confirms, the status is <code>complete_with_failures</code>;</li>
+<li>otherwise it is <code>failed</code>, with detail "exit 3, but the run's evidence does not show a finished run". Other non-zero codes are unchanged.</li>
+</ul></li>
+<li><strong>SLURM observation.</strong> In <code>_observe_record</code>, at the "inactive, no marker" branch (<code>run_console/_slurm_observer.py:661-671</code>), the helper's outcome decides. A fence closed by its finalizer with no <code>terminal_status</code>, plus a helper confirmation, gives <code>complete_with_failures</code>. Everything else stays <code>failed</code>, except PB5's measure case.</li>
+<li><strong>Boot rehydration.</strong> <code>_rehydrated_status</code> (<code>shell/_runs_registry.py:1026-1104</code>) gives <code>complete_with_failures</code> for completion <code>failed</code> when the helper confirms.</li>
+<li><strong>The snapshot badge and the write-authority checks</strong>, through PA10.</li>
+</ol>
+<p><strong>The helper's rule</strong> is <code>decide_wait_outcome</code>'s (<code>_cli/_cli_wait.py:309-366</code>). For "finished with failures" that is rule 3:</p>
+<ul>
+<li>completion <code>failed</code>;</li>
+<li><code>accepted - verified - failed == 0</code>;</li>
+<li><code>failed &gt; 0</code>;</li>
+<li>published, and not cancelled.</li>
+</ul>
+<p><strong>[call]</strong> Expose the decision from <code>_cli_wait.py</code> as one public function, <code>finished_run_outcome(output_dir, generation) -&gt; RunExitCode | None</code>. It applies <code>decide_wait_outcome</code> to the existing seams, with the live-jobs check left to the caller (the observer has already established that nothing is live). Make the waiter call it too, so the GUI cannot drift from what a DVC stage sees. The GUI maps the outcome:</p>
+<ul>
+<li><code>COMPLETE_WITH_FAILURES</code> gives <code>complete_with_failures</code> with N;</li>
+<li><code>COMPLETE</code> gives <code>complete</code>;</li>
+<li><code>ENDED_UNPUBLISHED</code> gives <code>failed</code>, or <code>incomplete</code> for a measure run (PB5);</li>
+<li><code>None</code> means "not finished".</li>
+</ul>
+<p>Two refinements, both documented in the code:</p>
+<ul>
+<li><strong>A generation-less caller</strong> (local, rehydration, the viewer) gets <code>True</code> from <code>_published</code> (<code>:206-207</code>). For those callers the function additionally requires <code>aggregate_proof_is_current(output_dir)</code> (<code>sdk_/_run_state.py:1415-1433</code>), or a process run. Otherwise a run killed after its last image but before finalize would read as complete.</li>
+<li><strong>It uses the GUI-tolerant check</strong>, <code>aggregate_proof_is_current</code>, <strong>never <code>valid_aggregate_snapshot</code></strong>. The strict check (§3.2) returns <code>None</code> after the first curation, which would turn a curated <code>complete_with_failures</code> run back into <code>failed</code> (PA10).</li>
+</ul>
+<p><strong>Status representation:</strong></p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th></th>
+<th>Approach</th>
+<th>Pro</th>
+<th>Con</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>a</strong></td>
+<td><strong>New <code>RunStatus</code> literal <code>complete_with_failures</code>, plus a <code>failed_images: int | None</code> field on <code>RunRecord</code> (recommended)</strong></td>
+<td>Honest and terminal. Gating code that tests <code>== "complete"</code> keeps its meaning</td>
+<td>Touches the status sets (below) and the persisted record</td>
+</tr>
+<tr class="even">
+<td>b</td>
+<td>Keep <code>complete</code>, carry N in <code>status_detail</code></td>
+<td>Smallest change</td>
+<td>Recent Runs shows a green "complete" over failed images, and the claim gate and the observer read it as a clean completion</td>
+</tr>
+<tr class="odd">
+<td>c</td>
+<td>Keep <code>failed</code>, improve the detail</td>
+<td>No schema change</td>
+<td>Not what the user asked for (G2)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Edits (a) requires:</strong></p>
+<ul>
+<li><strong>The status sets:</strong>
+<ul>
+<li>the <code>RunStatus</code> literal and <code>_RUN_STATUSES</code> (<code>shell/_runs_registry.py:103-130</code>);</li>
+<li><code>_TERMINAL_STATUSES</code> (<code>:133-135</code>);</li>
+<li><code>run_console/_callbacks.py:862</code>;</li>
+<li><code>run_console/_slurm_observer.py:62</code>.</li>
+</ul></li>
+<li><strong>The persisted record.</strong> <code>failed_images</code> is serialised next to <code>returncode</code> (<code>_runs_registry.py:1244-1245, 1501</code>) and read tolerantly, so an older record has <code>None</code>.</li>
+<li><strong>Older readers.</strong> An older GUI reading a newer owner record sees an unknown status. <code>run_status_is_nonterminal</code> (<code>:141-147</code>) returns <code>False</code> for it, which is the safe reading. sdk_ reads owner status only through <code>_OWNER_STATUSES_IN_FLIGHT</code> (<code>sdk_/_run_state.py:1137-1138</code>), which the new status is not in.</li>
+<li><strong>The claim gate is unchanged (D2).</strong> A CLI-launched run with failures still meets <code>_foreign_run_conflict</code>'s "failed non-GUI processing state" refusal (<code>_runs_registry.py:1469-1475</code>). A GUI-owned <code>complete_with_failures</code> record is terminal, so its output is claimable as any terminal GUI record is.</li>
+<li><strong>The CSS.</strong> Add <code>.run-console-recents-status-complete_with_failures</code> in <code>--oi-orange-text</code>.</li>
+</ul>
+<p><strong>[call]</strong> Use <code>--oi-orange-text</code>, the colour <code>incomplete</code> and <code>cancelled</code> share (<code>run_console/_assets/run_console.css:338-350</code>): finished, but not everything you asked for. Not <code>--oi-green-text</code>, because that is a clean success. Not vermilion, because DESIGN.md reserves vermilion for error and alert.</p>
+<p><strong>Tests:</strong></p>
+<ul>
+<li><code>tests/unit/gui/shell/test_runs_registry.py</code>:
+<ul>
+<li>exit 3 with confirming evidence;</li>
+<li>exit 3 with an unresolved image, which stays <code>failed</code>;</li>
+<li>exit 3 with no aggregate proof, which stays <code>failed</code>;</li>
+<li>exit 1, unchanged;</li>
+<li>an old record with no <code>failed_images</code>;</li>
+<li>a CLI-launched run with failures is still refused by the claim gate.</li>
+</ul></li>
+<li><code>test_slurm_observer.py</code>:
+<ul>
+<li>a finalizer-closed fence with failures gives <code>complete_with_failures</code>;</li>
+<li>a cancelled fence stays <code>failed</code>.</li>
+</ul></li>
+<li>The rehydration test.</li>
+<li><code>tests/unit/gui/test_snapshot_status.py</code>: the new badge arm, and a curated <code>complete_with_failures</code> run still reads "Run complete · N images failed".</li>
+<li>The waiter tests (<code>tests/unit/cli/</code>): pass unchanged through the new public function.</li>
+</ul>
+<h3 id="pa5-tsv-exports-and-mirror-readers">PA5. TSV exports and mirror readers</h3>
+<p><strong>Writers:</strong></p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Writer</th>
+<th>Today</th>
+<th>PR A</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Curated mirror, <code>_write_curated_mirror</code> (<code>results_viewer/_curation_labels.py:839-850</code>)</td>
+<td><code>.parquet</code>, then a best-effort <code>.csv</code> (<code>_atomic_write_csv</code>, <code>:961-966</code>)</td>
+<td><code>.parquet</code>, then <code>measurements.tsv</code> via <code>sdk_.write_tsv</code> (<code>sdk_/_delimited.py:102-148</code>), then retire a stale <code>measurements.csv</code> (PA8). <code>_atomic_write_csv</code> is deleted</td>
+</tr>
+<tr class="even">
+<td><code>FilteredMeasurements._save_locked</code> (<code>results_viewer/_filtered_state.py:543-600</code>, CSV at <code>:586</code>)</td>
+<td><code>.parquet</code>, then <code>.csv</code></td>
+<td><code>.parquet</code>, then <code>.tsv</code>, then retire the <code>.csv</code>. Only tests construct this class (<code>tests/gui/results_viewer/test_filtered_state.py:64</code>), so it is kept consistent rather than redesigned</td>
+</tr>
+<tr class="odd">
+<td>Error analysis, <code>_stage_generation</code> (<code>results_viewer/_error_tab/_publication.py:576-600</code>); the CLI re-emit shares it (<code>_cli/_cli_error_outputs.py:67-95</code>)</td>
+<td><code>error_analysis.csv</code> (<code>computation_path_name</code>, <code>:849-851</code>)</td>
+<td><code>error_analysis.tsv</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>[call]</strong> The TSV stays secondary to the Parquet, which is what every GUI reader reads. A failed TSV write <strong>unlinks <code>measurements.tsv</code></strong> and logs, rather than leaving it beside a newer Parquet. A text reader then finds nothing, and never reads stale rows. A stale CSV is retired only after the TSV write succeeds, so a failure never costs the older file (the <code>remove_stale_csv_sibling</code> contract, <code>sdk_/_delimited.py:151-185</code>).</p>
+<p><code>measurements_tsv</code> is already a GUI-written proof descriptor (<code>sdk_/_run_state.py:1331-1333</code>), so curation does not unfence the run (PA10).</p>
+<p><strong>Fingerprints must include the TSV</strong>, or a concurrent TSV write is invisible to the lock and retry logic:</p>
+<ul>
+<li><code>_source_fingerprint</code> (<code>_curation_labels.py:761-771</code>) swaps <code>layout.mirror_csv</code> for <code>layout.mirror_tsv</code>;</li>
+<li>so does <code>_consumed_state_snapshot_paths</code> (<code>results_viewer/_output_root.py:1119-1133</code>).</li>
+</ul>
+<p><strong>Error analysis publication</strong> has a strict versioned contract. Exact artifact name sets are checked at <code>_publication.py:490-495, 638-644, 662-676, 710-714</code>, under <code>schema_version == 1</code> (journal <code>:471</code>, receipt <code>:717</code>).</p>
+<ul>
+<li><strong>New publications.</strong> They write <code>error_analysis.tsv</code> under <code>schema_version: 2</code>.</li>
+<li><strong>Readers and rollback.</strong> Both accept version 1 (<code>.csv</code>) for a publication already on disk.</li>
+<li><strong>The stale CSV.</strong> Publishing a version-2 generation retires a live <code>error_analysis.csv</code>: publish first, then unlink, the B6 pattern (<code>sdk_.remove_stale_csv_sibling</code>). That needs <code>"error_analysis"</code> out of <code>_KEPT_CSV_STEMS</code> (<code>_delimited.py:146-148</code>; see PA8).</li>
+<li><strong>New sdk_ names.</strong> Add <code>ERROR_ANALYSIS_TSV</code> and <code>BundleLayout.error_analysis_tsv</code> beside the CSV names, which stay defined as legacy read names (<code>sdk_/_io_constants.py:1090, 3469-3471</code>).</li>
+</ul>
+<p><strong>Readers:</strong></p>
+<ul>
+<li><strong><code>_schema_cache.py:46</code></strong>, the only GUI reader of the text mirror. It is the no-pyarrow fallback; everything else reads Parquet. It resolves through <code>BundleLayout.measurements_table_path()</code> (<code>sdk_/_io_constants.py:3379-3388</code>): <code>.tsv</code>, then <code>.csv</code>. It reads with <code>read_delimited</code>, so the delimiter follows the suffix.</li>
+<li><strong>The re-export.</strong> <code>_gui/_config.py:68, 136, 462-466</code> adds <code>MEASUREMENTS_TSV</code>. <code>MEASUREMENTS_CSV</code> stays as a legacy read name, because #281's import-walk test (#281 spec B8; <code>tests/unit/sdk_/test_gui_sdk_imports.py</code>, <code>gui_sdk_signatures.json</code>) pins every sdk_ name the GUI imports.</li>
+</ul>
+<p><strong>Tests:</strong></p>
+<ul>
+<li>curation rewrites <code>measurements.tsv</code>, and its bytes equal <code>write_tsv(parquet frame)</code>;</li>
+<li>curation on a pre-PA8 tree retires its <code>measurements.csv</code>;</li>
+<li>a failed TSV write leaves no <code>.tsv</code> and keeps the old <code>.csv</code>;</li>
+<li><code>_schema_cache</code> prefers the TSV and falls back to a CSV-only tree;</li>
+<li>error analysis:
+<ul>
+<li>writes a version-2 TSV publication;</li>
+<li>reads a version-1 one;</li>
+<li>retires the old CSV;</li>
+<li>a rollback over a version-1 journal still validates;</li>
+</ul></li>
+<li>red #7's test (§3.3).</li>
+</ul>
+<h3 id="pa6-the-typed-config-suffixes">PA6. The typed config suffixes</h3>
+<p><strong>Builder save is already right.</strong> <code>_write_pipeline_config</code> (<code>builder/_callbacks.py:659-664</code>) goes through <code>ensure_typed_json_suffix</code>, so the gap is in the listing and filtering surfaces and the ledger text.</p>
+<p><strong>The defect class: plain <code>.json</code> is a legacy pipeline suffix.</strong> <code>PIPELINE_CONFIG_SUFFIXES</code> (<code>sdk_/_io_constants.py:135-141</code>) contains <code>.json</code>, so any surface filtering by it lists <code>x.pht-tune.json</code>, <code>x.pht-op.json</code> and <code>x.pht-cc.json</code> as pipelines. Before the flip those names did not end in <code>.json</code>.</p>
+<p><strong>[call]</strong> Add one sdk_ predicate, <code>is_pipeline_config_path(path)</code>: it matches <code>PIPELINE_CONFIG_SUFFIXES</code> and matches no non-pipeline typed suffix, canonical or legacy. Every surface below uses it. The CLI side may adopt it later.</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Surface</th>
+<th>Today (file:line)</th>
+<th>PR A</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Builder directory browser</td>
+<td><code>PIPELINE_EXTS = PIPELINE_CONFIG_SUFFIXES</code> (<code>builder/_directory_browser.py:32</code>), matched at <code>:259</code></td>
+<td><code>directory_tree</code> (<code>:151-158</code>) accepts a predicate as well as <code>extensions</code>; the pipeline modal passes <code>is_pipeline_config_path</code></td>
+</tr>
+<tr class="even">
+<td>Shell classifier</td>
+<td><code>_classify_file</code> (<code>shell/_classifier.py:220-235</code>). The content peek (<code>:348-360</code>) matches <code>"pipe_cfgs"</code>, which a tune spec also contains, because it embeds its pipeline</td>
+<td>suffix test is <code>is_pipeline_config_path</code>, so no <code>has_pipeline_json</code> for a tune spec</td>
+</tr>
+<tr class="odd">
+<td>Run console pipeline check</td>
+<td><code>run_console/_callbacks.py:2897-2899</code></td>
+<td><code>is_pipeline_config_path</code></td>
+</tr>
+<tr class="even">
+<td>Tune Deploy validator</td>
+<td><code>CONFIG_SUFFIX_TUNING</code> only (<code>tune/_validation.py:61</code>); message names <code>.json.pht-tune</code> (<code>:65</code>)</td>
+<td>accept the canonical and legacy typed tune suffixes; message names <code>.pht-tune.json</code></td>
+</tr>
+<tr class="odd">
+<td>Tune spec loader</td>
+<td><code>load_pipeline_or_spec</code> (<code>tune/_setup_authoring.py:353-358</code>) treats only the canonical suffix as a spec</td>
+<td>canonical <strong>and</strong> legacy typed tune suffixes load as <code>TuningSpec</code></td>
+</tr>
+<tr class="even">
+<td>Tune pickers</td>
+<td><code>PIPELINE_CONFIG_SUFFIXES | {CONFIG_SUFFIX_TUNING}</code> at <code>tune/_setup_authoring.py:47</code>, <code>tune/_layout.py:273-275</code>, <code>tune/_callbacks.py:310, 1243</code></td>
+<td>the union of the pipeline set and both typed tune suffixes</td>
+</tr>
+<tr class="odd">
+<td>GUI tune preset writer</td>
+<td>writes <code>…setup.json.pht-tune</code> (<code>tune/_setup_authoring.py:535</code>), a legacy name</td>
+<td><code>…setup.pht-tune.json</code></td>
+</tr>
+<tr class="even">
+<td>Tune winner readers</td>
+<td><code>best_pipeline_path(path)</code> at <code>tune/_run_root.py:120, 137, 150</code> (canonical only)</td>
+<td>read through <code>resolve_best_pipeline_path</code> (<code>sdk_/_io_constants.py:1866</code>); <code>TuneRunRoot</code> keeps a separate canonical write path</td>
+</tr>
+<tr class="odd">
+<td>Tune writers</td>
+<td><code>_export.py:36-39, 51-54, 86</code>, <code>_winner.py:100-106</code>, <code>tune/_callbacks.py:2424-2428</code> write canonical beside any old twin</td>
+<td>publish, then unlink <code>old_typed_config_sibling(path)</code>, as the CLI does (<code>tune/_tune_cli/_run.py:89-101</code>)</td>
+</tr>
+<tr class="even">
+<td>Analysis <code>RecipeState.save</code></td>
+<td>writes canonical (<code>analysis/_recipe_state.py:1159</code>), and an old <code>pipeline.json.pht-pipe</code> survives</td>
+<td>retire the old typed sibling after publishing, as <code>QcRecipe._retire_old_typed_sibling</code> does (<code>sdk_/_qc_recipe/_recipe.py:546-560</code>); a plain <code>pipeline.json</code> is never removed (#281 A4)</td>
+</tr>
+<tr class="odd">
+<td>Capture script</td>
+<td>writes <code>pipeline.json.pht-pipe</code> (<code>scripts/capture_gui_tutorial_screenshots.py:52, 229, 1112</code>)</td>
+<td>canonical name, so the screenshots show the name users will see</td>
+</tr>
+<tr class="even">
+<td>Docs</td>
+<td><code>_gui/CLAUDE.md:257</code>; <code>FEATURES.md</code> (19 mentions of <code>.json.pht-*</code>, e.g. <code>:123, 433, 486, 496, 512, 522, 527, 604-622</code>); 10 in <code>docs/source/tutorials/gui/</code></td>
+<td>canonical names; legacy names described as read-only</td>
+</tr>
+<tr class="odd">
+<td>E2E fixtures</td>
+<td><code>tests/e2e/gui/</code> writes <code>.json.pht-*</code> (#281 hand-off P0)</td>
+<td>canonical, plus one legacy-name read test per surface family</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Tests:</strong></p>
+<ul>
+<li>a unit test per row;</li>
+<li>a parametrised test of <code>is_pipeline_config_path</code> over every canonical, legacy and plain name;</li>
+<li>a classifier test showing a <code>.pht-tune.json</code> holding <code>pipe_cfgs</code> is not a pipeline;</li>
+<li>the tune writers' retire step: the old twin is removed, a plain <code>.json</code> is kept, and a publish failure leaves the old file.</li>
+</ul>
+<h3 id="pa7-ledgers-tutorial-text-and-screenshots-the-gui-tutorial-capture-skill">PA7. Ledgers, tutorial text and screenshots (the <code>gui-tutorial-capture</code> skill)</h3>
+<ul>
+<li><strong><code>FEATURES.md</code></strong> (the CI gate requires it whenever <code>_gui/</code> changes):
+<ul>
+<li>new rows:
+<ul>
+<li>the "complete with failures" status;</li>
+<li>the SLURM no-op exit 0/3;</li>
+<li>the curated TSV mirror;</li>
+<li>the error-analysis TSV;</li>
+<li>the <code>is_pipeline_config_path</code> listing;</li>
+<li>curation of a run with failures (PA10);</li>
+<li>TSV metadata pickers (PA9);</li>
+</ul></li>
+<li>rows to update:
+<ul>
+<li><code>:356</code> "Curation on-disk format": <code>measurements.{tsv,parquet}</code>, no CSV;</li>
+<li><code>:371</code> "Colony measurement picker": the latest measuring run, not <code>tables.measurements</code>;</li>
+<li><code>:53, 54, 92, 114, 451</code>, the metadata picker and handoff rows, which name <code>.csv</code>;</li>
+<li><code>:585</code> and <code>:586</code>, the status rows;</li>
+<li><code>:626</code>, which names <code>measurements.{parquet,csv}</code>;</li>
+<li>every <code>.json.pht-*</code> mention.</li>
+</ul></li>
+<li>Each <code>✅ shipping</code> row's <code>Test ref</code> must resolve (pre-commit and <code>check_features_md.py</code>).</li>
+</ul></li>
+<li><strong><code>WORKFLOWS.md</code>.</strong> No new workflow. <code>run_local</code>, <code>run_slurm</code>, <code>view_results</code> and <code>analysis</code> descriptions change only if their text names a changed state or file.</li>
+<li><strong>Tutorial text (D4).</strong> The new status is <strong>documented in text, with no new frame</strong>:
+<ul>
+<li><code>docs/source/tutorials/gui/04_run_local.md</code> and <code>05_run_slurm.md</code> gain one paragraph on <code>complete · N failed</code>, how it differs from <code>failed</code>, and that the failed images have no rows;</li>
+<li><code>06_view_results.md</code> gains one on the badge and on curating such a run (PA10);</li>
+<li>the tutorials' <code>measurements.csv</code> and <code>.json.pht-*</code> mentions are updated (<code>01_setup.md</code> among them).</li>
+</ul></li>
+<li><strong>Screenshots.</strong> Regenerate the <strong>full</strong> set with <code>uv run python scripts/capture_gui_tutorial_screenshots.py</code> after the capture script's suffix flip, and commit everything. No capture scenario is added for <code>complete_with_failures</code> (D4).</li>
+</ul>
+<h3 id="pa8-measurementscsv-retirement-d1">PA8. <code>measurements.csv</code> retirement (D1)</h3>
+<p><strong>Today.</strong> Finalize writes the mirror three times: <code>.tsv</code>, <code>.csv</code> and <code>.parquet</code> (<code>_seed_measurements</code>, <code>_cli/_cli_output_manager.py:968-1003</code>, called at <code>:1215</code> from the shared finalize path). The CSV is kept only because GUI curation rewrote it (#281 B9).</p>
+<p><strong>Behaviour.</strong> No PhenoTypic writer produces <code>deliverables/measurements.csv</code> any more. <code>measurements.tsv</code> is the text mirror, and <code>measurements.parquet</code> stays the GUI's read table.</p>
+<p><strong><code>_cli/</code> changes:</strong></p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Site</th>
+<th>Today</th>
+<th>PR A</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>_cli_output_manager.py:968-1003</code> <code>_seed_measurements</code></td>
+<td>writes <code>.tsv</code>, <code>.csv</code>, <code>.parquet</code></td>
+<td>writes <code>.tsv</code> and <code>.parquet</code>. After the TSV is published, <code>remove_stale_csv_sibling(measurements_tsv_path(output_dir))</code> retires an older run's generated <code>measurements.csv</code> (the B6 pattern, as for the analysis TSVs at <code>:838</code> and <code>:1502</code>). The docstring (<code>:975-983</code>) stops citing B9</td>
+</tr>
+<tr class="even">
+<td><code>_cli_completion.py:1205-1210</code> <code>required_paths</code></td>
+<td>records <code>measurements_csv</code></td>
+<td>drops <code>measurements_csv</code>; the proof records <code>master_parquet</code>, <code>measurements_tsv</code>, <code>measurements_parquet</code>, plus <code>metrics_json</code>/<code>schema_json</code> (<code>:1215-1220</code>). The comment at <code>:1183-1203</code> is updated</td>
+</tr>
+<tr class="odd">
+<td><code>_cli_interactive.py:257, 274-279</code> dry-run inventory</td>
+<td>names <code>measurements.csv</code> "for the results viewer"</td>
+<td>names only the TSV and Parquet</td>
+</tr>
+<tr class="even">
+<td><code>_cli_readme_generator.py:116, 148-150</code> README tree and paragraph</td>
+<td>lists <code>measurements.csv</code> "kept until #283"</td>
+<td>removed; one sentence says older runs had a <code>measurements.csv</code></td>
+</tr>
+<tr class="odd">
+<td><code>_dashboard/_generator.py:826, 1017-1019</code> download command</td>
+<td><code>wget …/deliverables/measurements.csv</code></td>
+<td><code>…/deliverables/measurements.tsv</code>; the element id <code>cmd-csv</code> is renamed with its CSS/JS</td>
+</tr>
+<tr class="even">
+<td><code>_cli_preflight.py:182-185</code> hint text</td>
+<td>"dropped from measurements.csv"</td>
+<td>"dropped from measurements.tsv"</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong><code>sdk_/</code> changes:</strong></p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Site</th>
+<th>Today</th>
+<th>PR A</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>_delimited.py:146-148</code> <code>_KEPT_CSV_STEMS</code></td>
+<td><code>{"measurements", "error_analysis", "metadata"}</code></td>
+<td><code>{"metadata"}</code>. The user's snapshot is never swept (the root <code>CLAUDE.md</code> rule); the docstring at <code>:155-162</code> follows</td>
+</tr>
+<tr class="even">
+<td><code>_run_state.py:1331-1333</code> <code>_GUI_WRITTEN_PROOF_DESCRIPTORS</code></td>
+<td><code>{measurements_csv, measurements_tsv, measurements_parquet}</code></td>
+<td><strong>unchanged</strong>. It is reader-side: a proof written before PA8 still records <code>measurements_csv</code>, and a curation or a PA8 retirement must not unfence it</td>
+</tr>
+<tr class="odd">
+<td><code>_io_constants.py:415, 1698-1700, 3371-3377</code> <code>MEASUREMENTS_CSV</code>, <code>measurements_csv_path</code>, <code>BundleLayout.mirror_csv</code></td>
+<td>the curation write target</td>
+<td><strong>kept as legacy read names</strong>, with "read-only legacy; no writer" docstrings. The GUI import-walk test pins them (#281 B8)</td>
+</tr>
+<tr class="even">
+<td><code>_io_constants.py:1708-1730, 3379-3388</code> <code>measurements_table_path</code></td>
+<td>"unwired until #283"</td>
+<td>wired (PA5); docstrings drop the caveat</td>
+</tr>
+<tr class="odd">
+<td><code>_io_constants.py:403-430</code> constant comments</td>
+<td>describe the CSV as the human-opened file</td>
+<td>describe the TSV</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>An existing run's CSV on its next finalize.</strong> It is retired after the TSV is published: publish first, then unlink. This holds for a forward continuation, <code>--mode measure</code>, <code>--mode recompile</code> and a full-run <code>--mode migrate</code>, all of which reach <code>_seed_measurements</code> through the shared finalize (root <code>CLAUDE.md</code>, "Output layout"). Curation on a pre-PA8 tree retires it the same way (PA5). A tree nobody finalizes again keeps its CSV, and every reader falls back to it.</p>
+<p><strong>Byte stability (#281 C11).</strong> Removing a file from <code>deliverables/</code> is a one-time change in a DVC stage's out hash, after which runs are byte-stable again. <code>tests/integration/cli/test_deliverables_byte_stable.py</code> keeps comparing, with the CSV gone from both runs.</p>
+<p><strong>Docs that name the file:</strong></p>
+<ul>
+<li><strong>The DVC how-to</strong>, <code>docs/source/how_to/pages/dvc.md:91-94</code> and <code>:363-364</code>: the "until #283" caveat is removed, and curated edits now reach the TSV. Its template's <code>plots:</code> entry already names <code>measurements.tsv</code> (<code>:76</code>), and its <code>outs</code> are directories, so no DVC <code>outs</code> entry names the CSV.</li>
+<li><strong>The root <code>CLAUDE.md</code></strong>, "Output layout": <code>measurements.{csv,parquet}</code> becomes <code>measurements.{tsv,parquet}</code>.</li>
+<li><strong><code>src/phenotypic/_cli/CLAUDE.md</code>, <code>src/phenotypic/_gui/CLAUDE.md</code></strong>: the same.</li>
+<li><strong>The other pages that name it:</strong> <code>docs/source/api_reference/cli_reference.rst</code>, <code>how_to/pages/{reference_metadata,migrate_ome_zarr,rembi_metadata,generate_reports}.md</code>, <code>tutorials/gui/01_setup.md</code>, <code>tutorials/notebooks/07_measuring_and_exporting.ipynb</code>. The notebook is edited as text, not re-executed (§6).</li>
+<li><strong>Docstrings</strong> that say "a delivered <code>measurements.csv</code>": <code>analysis/qc/_expected_vs_detected.py:298, 410</code>.</li>
+</ul>
+<p><strong>Tests that name the CSV.</strong> 30 files under <code>tests/</code> mention it. The largest are:</p>
+<ul>
+<li><code>tests/unit/cli/test_tsv_cutover_old_tree.py</code> (19 lines);</li>
+<li><code>test_cli_v2.py</code> (10);</li>
+<li><code>tests/unit/sdk_/test_io_constants.py</code> (7);</li>
+<li><code>test_deliverables_tsv.py</code> (6).</li>
+</ul>
+<p>The shared helper <code>tests/_output_layout.py:82-105</code> <code>write_measurements_mirror(csv=True)</code> has <strong>62 importers</strong>. Its default flips to <code>csv=False</code>; the keyword stays for old-tree tests. Each assertion is reviewed one by one:</p>
+<ul>
+<li>an assertion that the CSV <strong>exists</strong> after a finalize becomes one that it <strong>does not</strong>, and that the TSV does;</li>
+<li>an assertion about an <strong>old tree</strong> keeps writing a CSV and checks the fallback or the retirement;</li>
+<li><code>tests/fixtures/tables_v1/v1_run/</code> is a legacy fixture and stays byte-for-byte.</li>
+</ul>
+<p><strong>New tests:</strong></p>
+<ul>
+<li>a finalize writes no <code>measurements.csv</code>;</li>
+<li>a finalize over a tree holding one retires it only after the TSV exists;</li>
+<li>a TSV publish failure keeps the CSV;</li>
+<li><code>remove_stale_csv_sibling</code> now sweeps <code>measurements</code> and <code>error_analysis</code> and still refuses <code>metadata</code>;</li>
+<li>a proof written before PA8, holding <code>measurements_csv</code>, still validates after the CSV is retired.</li>
+</ul>
+<h3 id="pa9-tsv-capable-metadata-pickers-and-readers-d8">PA9. TSV-capable metadata pickers and readers (D8)</h3>
+<p>#281 B4 makes every user-supplied metadata table accept <code>.csv</code> and <code>.tsv</code>, with the delimiter chosen by suffix (<code>sdk_.INPUT_TABLE_SUFFIXES</code>, <code>_delimited.py:37</code>; <code>delimiter_for</code>, <code>:42</code>). These GUI sites still take <code>.csv</code> (plus <code>.parquet</code> where the consumer reads it) only:</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Site</th>
+<th>Today</th>
+<th>PR A</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>shell/_source_picker.py:13, 109</code> shared metadata picker</td>
+<td><code>_CSV_EXTS = {".csv"}</code></td>
+<td><code>INPUT_TABLE_SUFFIXES</code></td>
+</tr>
+<tr class="even">
+<td><code>shell/_metadata_context.py:722</code> payload validation</td>
+<td>refuses any suffix but <code>.csv</code></td>
+<td>accepts <code>INPUT_TABLE_SUFFIXES</code>; the log text says "table"</td>
+</tr>
+<tr class="odd">
+<td><code>shell/_metadata_context.py:749-786</code> <code>read_metadata_csv_table</code> (Browse's metadata panel, called at <code>:466, 593</code>)</td>
+<td><code>csv.reader</code> with the default comma, so a TSV parses as one column</td>
+<td>the delimiter comes from <code>delimiter_for(path)</code>. <code>utf-8-sig</code> and the duplicate-header handling stay</td>
+</tr>
+<tr class="even">
+<td><code>builder/_reference_metadata.py:39-41, 44, 72</code> reference table</td>
+<td><code>(".csv", ".parquet")</code>; the refusal text names those two</td>
+<td>adds <code>.tsv</code>. <code>ReferenceContext</code> already reads it (<code>_core/_reference_context.py:167-175</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>tune/_setup_authoring.py:46, 372, 451, 583</code> QC layout path</td>
+<td><code>{".csv", ".parquet"}</code></td>
+<td>adds <code>.tsv</code></td>
+</tr>
+<tr class="even">
+<td><code>tune/_layout.py:330</code> and <code>tune/_callbacks.py:1254</code> tune metadata pickers</td>
+<td><code>{".csv", ".parquet"}</code></td>
+<td>adds <code>.tsv</code></td>
+</tr>
+<tr class="odd">
+<td><code>run_console/_request_safety.py:403</code> metadata preflight</td>
+<td><code>read_metadata_csv</code> already accepts <code>.tsv</code>; a refused suffix surfaces as a bare <code>ValueError</code></td>
+<td>the blocked message names the allowed suffixes, as the CLI's does ("must be a .csv or .tsv table")</td>
+</tr>
+<tr class="even">
+<td><code>analysis/_callbacks.py:95</code> <code>MergeMetadata</code> default <code>"metadata.csv"</code></td>
+<td>names a file a <code>.tsv</code> run does not have</td>
+<td>resolved with <code>resolve_metadata_snapshot_path</code>. A tree holding both snapshot suffixes shows the resolver's message, not a traceback</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>[call]</strong> The tune pickers are only useful if their consumer reads a <code>.tsv</code>. The QC layout's <code>ExpectedVsDetectedCount._load_layout</code> reads <code>.csv</code> and <code>.parquet</code> only (<code>analysis/qc/_expected_vs_detected.py:612-620</code>). PA9 extends it to <code>.tsv</code> through <code>read_delimited</code>, and its field descriptions (<code>:79, 110</code>) follow. A picker that offers a file its scorer then refuses would be a trap. This is the one non-GUI change PA9 makes.</p>
+<p><strong>Tests:</strong></p>
+<ul>
+<li>each picker lists a <code>.tsv</code>;</li>
+<li><code>read_metadata_csv_table</code> reads a TSV into the same columns and rows as the equivalent CSV;</li>
+<li>a <code>.txt</code> is still refused, with the message naming both suffixes;</li>
+<li>the reference table and the QC scorer load a <code>.tsv</code>;</li>
+<li><code>MergeMetadata</code>'s default resolves to <code>metadata.tsv</code> in a TSV run.</li>
+</ul>
+<h3 id="pa10-curation-of-a-complete_with_failures-run-d2">PA10. Curation of a <code>complete_with_failures</code> run (D2)</h3>
+<p><strong>Behaviour.</strong> A run that <code>finished_run_outcome</code> (PA4) classifies as <code>COMPLETE_WITH_FAILURES</code> is writable exactly as a <code>complete</code> run is. The failed images have no rows in the master: aggregation reads only authorized embedded tables. So they offer nothing to curate, and their metadata-only phantom rows carry a null <code>Object_Label</code>, which is already excluded from curation keys (<code>FEATURES.md:356</code>).</p>
+<p><strong>The rule.</strong> One predicate, <code>run_permits_mutation(state, output_dir)</code>, is true for a bundle (<code>state is None</code>), for <code>completion == "complete"</code>, and for a confirmed <code>COMPLETE_WITH_FAILURES</code>. It replaces every <code>completion == "complete"</code> write-authority check:</p>
+<ul>
+<li><code>_mutation_guard._run_is_complete</code> (<code>_mutation_guard.py:38-45</code>) and its three uses inside <code>authorize</code>: at bind (<code>:121</code>, through <code>OutputRoot.run_is_complete</code>), on the fresh state (<code>:140</code>), and on the verified state (<code>:170</code>);</li>
+<li><code>output_mutations_disabled</code> and <code>output_read_only_diagnostic</code> (<code>:214-229</code>);</li>
+<li><code>OutputRoot.run_is_complete</code> (<code>_output_root.py:700-713</code>), renamed <code>run_permits_mutation</code>. Its CAN-17 docstring now names the second allowed state;</li>
+<li><code>mutation_snapshot_is_safe</code> (<code>_output_root.py:780-797</code>);</li>
+<li>the processing-inventory reuse rule (<code>_processing_inventory.py:97</code>). A <code>complete_with_failures</code> run is terminal, so it gets an <code>"exhaustive"</code> inventory (<code>:138-145</code>), and the guard's exhaustiveness check (<code>_mutation_guard.py:127-131</code>) passes for it as it does for a complete run.</li>
+</ul>
+<p><strong>What curation must check</strong> before each write. All of these come from <code>authorize</code>:</p>
+<ol type="1">
+<li><strong>The verdict, fresh, at all three points.</strong> At bind, on the fresh deep state, and on the verified deep state, <code>run_permits_mutation</code> must hold. Any change, such as a retry that repaired an image or a new failure, refuses the write.</li>
+<li><strong>The run identity digest</strong> is unchanged across the three (<code>:146-150, 169-177</code>).</li>
+<li><strong>No active owner</strong> (<code>:151-154, 172</code>) and a current processing snapshot (<code>:155-159</code>).</li>
+<li><strong>The failed count N is part of the verdict.</strong> A write authorized against "N failed" is refused if the fresh verdict says otherwise. <strong>[call]</strong> The receipt records N beside the identity digest, so a test can assert it.</li>
+</ol>
+<p><strong>Fencing after a curation write on such a run.</strong> Curation rewrites <code>measurements.parquet</code> and <code>measurements.tsv</code>, retires a stale <code>measurements.csv</code> (PA5), and writes the <code>deliverables/qc/</code> and <code>errors/</code> state. Every descriptor it touches is in <code>_GUI_WRITTEN_PROOF_DESCRIPTORS</code>, so:</p>
+<ul>
+<li><code>aggregate_proof_is_current</code> stays <code>True</code>;</li>
+<li><code>finished_run_outcome</code> still returns <code>COMPLETE_WITH_FAILURES</code> with the same N;</li>
+<li><code>resolve_run_state</code> keeps completion <code>failed</code>, with the same identity digest and diagnostics;</li>
+<li>the enforced descriptors (<code>master_parquet</code>, <code>metrics_json</code>, <code>schema_json</code>) still match their bytes;</li>
+<li>the run has no run proof before or after; none is written for a run with failures (<code>_cli_completion.py:1304-1342</code>), so curation cannot create or break one.</li>
+</ul>
+<p><code>valid_aggregate_snapshot</code> returns <code>None</code> after the write (§3.2), as it already does for a curated complete run. PA4's helper never asks it, so this does not move the verdict. It is a pre-existing property of the strict check, recorded in §7 R4.</p>
+<p><strong>Tests</strong> (<code>tests/unit/gui/results_viewer/</code>, <code>tests/unit/gui/test_curation_does_not_unfence_the_run.py</code>):</p>
+<ul>
+<li>the guard authorizes a <code>complete_with_failures</code> run and still refuses a <code>failed</code> run with an unresolved image;</li>
+<li>a verdict that flips between bind and write (a retry repairs the failed image) is refused;</li>
+<li>after a curation write on such a run:
+<ul>
+<li><code>aggregate_proof_is_current</code> is <code>True</code>;</li>
+<li><code>finished_run_outcome</code> returns the same N;</li>
+<li><code>resolve_run_state(...).identity.digest()</code> and <code>.diagnostics</code> are unchanged;</li>
+<li><code>master_parquet</code>, <code>metrics_json</code> and <code>schema_json</code> still match;</li>
+</ul></li>
+<li>a plain CLI re-run of the same command after the curation still exits <code>3</code> and does not rewrite the curated mirror's labels (<code>curation_labels.parquet</code> survives, per the root <code>CLAUDE.md</code>);</li>
+<li>the Results and Analysis read-only diagnostic no longer appears for such a run.</li>
+</ul>
+<hr />
+<h2 id="5-pr-b-run-console-stage-4-and-measure-mode-282-gui-items">5. PR B: run-console Stage 4 and measure mode (#282 GUI items)</h2>
+<p><strong>Base:</strong> <code>origin/feat/gpu-embedding-staging</code> @ <code>0993c8e06</code>, cut after #282 is rebased or merged onto a <code>main</code> that contains PR A (§1). All citations in this section are at that base and are re-verified when PR B is cut.</p>
+<p><strong>What #282 requires of the GUI.</strong> #282's spec names only the control ("A run-console control for <code>--embed-stage</code> is a GUI follow-up. It needs the FEATURES.md and WORKFLOWS.md ledgers", <code>design.md:418</code>). The rules the GUI must mirror are:</p>
+<ul>
+<li><strong>U2</strong> (<code>:76</code>): <code>auto</code> is <code>gpu</code> on SLURM with a GPU profile, otherwise <code>inline</code>; a local run is <code>inline</code> unless <code>gpu</code>.</li>
+<li><strong>U4</strong> (<code>:79</code>): <code>--mode measure</code> uses Stage 4.</li>
+<li><strong>U9</strong> (<code>:83</code>): a <code>device="cpu"</code> pin wins under <code>auto</code>, and <code>gpu</code> with a pin is refused.</li>
+<li><strong>U12</strong> (<code>:87</code>): a continuation under <code>auto</code> adopts the recorded stage. R3 refuses only a conflicting explicit flag, or an <code>auto</code> that would adopt <code>gpu</code> with no Stage 4.</li>
+<li><strong>U16</strong> (<code>:91</code>): a measure pass with leftovers ends unfinished.</li>
+<li><strong>§4.1</strong> (<code>:109-124</code>): in measure mode only <code>--gpu-slurm</code> counts as a GPU profile.</li>
+<li><strong>§4.7</strong> (<code>:307-321</code>): R1–R3 are one usage-error line each, raised before <code>--dry-run</code>.</li>
+</ul>
+<h3 id="pb1-an---embed-stage-control">PB1. An <code>--embed-stage</code> control</h3>
+<p><strong>Today.</strong></p>
+<ul>
+<li>No GUI code passes <code>--embed-stage</code>; <code>grep embed_stage src/phenotypic/_gui</code> finds nothing.</li>
+<li>The CLI option is <code>phenotypicCLI.py:2504-2515</code> (<code>click.Choice(["auto","gpu","inline"])</code>, default <code>auto</code>).</li>
+<li><code>to_argv</code> builds the common argv tail (<code>run_console/_state.py:515-603</code>), and <code>_build_subprocess_argv</code> adds the SLURM-only <code>--gpu-*</code> options (<code>run_console/_slurm.py:197-210</code>).</li>
+</ul>
+<p><strong>Behaviour.</strong></p>
+<ul>
+<li><strong>The control.</strong> A three-way radio, <code>rc-radio-embed-stage</code>: Auto (default), GPU, Inline.</li>
+<li><strong>Where it lives.</strong> In the always-visible run options, beside <code>--retry-failures</code>, not inside the SLURM-only GPU section, because <code>gpu</code> applies to a local run too (U2).</li>
+<li><strong>When it is enabled.</strong> Only when the pipeline has an in-scope embedder (<code>pipeline_embedders</code>, <code>_cli/_cli_embed_stage.py:88</code>). Otherwise it is disabled, with the help text "This pipeline has no embedder; nothing runs in Stage 4" (the O5 note's meaning).</li>
+<li><strong>The state field.</strong> <code>RunConsoleState.embed_stage: Literal["auto","gpu","inline"] = "auto"</code>. <code>from_json</code> reads it tolerantly, so older presets load as <code>auto</code> (pattern at <code>_state.py:146-147, 179-195</code>). It is passed into the positional <code>_action_control_states</code>/<code>values[...]</code> mapping (<code>run_console/_callbacks.py:411, 515-516, 552-553</code>).</li>
+<li><strong>The argv.</strong> <code>to_argv</code> emits <code>--embed-stage &lt;v&gt;</code> only when <code>v != "auto"</code>, so existing argv, presets and the command digest are unchanged for every current user.</li>
+<li><strong>A local run with GPU chosen on a host with no CUDA</strong> fails with the CLI's one-line <code>ClickException</code> (exit 1, <code>prepare_stage4_environment</code>, <code>_cli_embed_stage.py:526-562</code>). It surfaces as a failed run with that line, not in the refusal alert: it is a fact about the host, not the pipeline. <strong>[call]</strong></li>
+</ul>
+<h3 id="pb2-gpu-section-visibility-matches-the-clis-resolution">PB2. GPU section visibility matches the CLI's resolution</h3>
+<p><strong>Today.</strong></p>
+<ul>
+<li><code>show_staged_gpu_controls</code> (<code>run_console/_callbacks.py:1840-1865</code>) shows <code>RC_STAGED_GPU_SECTION</code> only when <code>mode == "slurm" and uses_gpu</code>.</li>
+<li><code>uses_gpu</code> comes from <code>_staged_gpu_capability</code> (<code>:255-277</code>), which calls <code>pipeline_requires_gpu</code> (<code>_cli/_cli_validation.py:442</code>), true for a <code>GpuDetector</code> only.</li>
+<li>So a DINO-only pipeline can never pass <code>--gpu-slurm</code>. SLURM <code>auto</code> then always resolves <code>inline</code> (<code>resolve_embed_stage</code>, <code>_cli_embed_stage.py:132-174</code>), and Stage 4 is unreachable from the GUI.</li>
+</ul>
+<p><strong>Behaviour.</strong> The section is shown when <code>mode == "slurm"</code> and any of these holds:</p>
+<ul>
+<li><strong>in full mode,</strong> the pipeline holds a <code>GpuDetector</code> (today's rule);</li>
+<li>the pipeline can run Stage 4 (an in-scope <code>MeasureDinoEmbedding</code>, with no <code>device="cpu"</code> pin and no stageless embedder), and the control is not <code>inline</code>;</li>
+<li>the control is <code>gpu</code>.</li>
+</ul>
+<p>In measure mode the first bullet does not apply: the detector does not run, and only <code>--gpu-slurm</code> counts as a GPU profile (PB5).</p>
+<p>Under <code>auto</code>, a hint under the control states what the CLI will resolve. It is computed by the CLI's own resolver, for example:</p>
+<ul>
+<li>"Auto → GPU Stage 4 (GPU profile below)";</li>
+<li>"Auto → inline: meas 'dino' is pinned to device='cpu'", which is the U9 note text, verbatim.</li>
+</ul>
+<p>The section's wording stops saying "detection":</p>
+<ul>
+<li>the header "Staged GPU detection" (<code>run_console/_form.py:513</code>) becomes "GPU stages";</li>
+<li>the shards help "One resident model per whole-GPU shard." (<code>:556</code>) covers Stage 2 and Stage 4;</li>
+<li>also update <code>_ids.py:136-137</code> and <code>_state.py:100</code>, and <code>docs/source/tutorials/gui/05_run_slurm.md:22, 44</code>.</li>
+</ul>
+<p><strong>One resolver, not two:</strong></p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th></th>
+<th>Approach</th>
+<th>Pro</th>
+<th>Con</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>a</td>
+<td>Reimplement the rule in the GUI</td>
+<td>no CLI change</td>
+<td>A second copy of U2/U9/O3, which is anti-goal 4</td>
+</tr>
+<tr class="even">
+<td>b</td>
+<td>Call <code>has_slurm_gpu_profile</code> / <code>stage4_supported</code> / <code>resolve_embed_stage_for_config</code> (<code>_cli_embed_stage.py:350-468</code>)</td>
+<td>the exact CLI code</td>
+<td>They take an <code>ExecutionConfig</code> with about 20 required fields (<code>_cli/_cli_types.py:148+</code>), which the GUI cannot honestly build</td>
+</tr>
+<tr class="odd">
+<td><strong>c</strong></td>
+<td><strong>Factor <code>resolve_embed_stage_for_config</code>'s pipeline half into a public <code>resolve_embed_stage_for_pipeline(pipeline, requested, *, mode, is_slurm, gpu_slurm_given) -&gt; (stage, notes)</code> in <code>_cli_embed_stage.py</code>, which the CLI then calls too (recommended)</strong></td>
+<td>One producer; the GUI passes only what it has</td>
+<td>A small refactor in #282's module, in PR B</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>[call]</strong> Pick (c). The pure pieces already exist (<code>resolve_embed_stage</code> at <code>:132</code>, <code>pipeline_embedders</code> at <code>:88</code>). Only <code>_cpu_pinned_key</code>, <code>_unstageable_embedder</code> and <code>_has_gpu_detector</code> (<code>:109, 124, 471</code>) are private, and (c) keeps them private. The GUI passes <code>mode="full"</code> or <code>mode="measure"</code> from PB5's selector. <code>resolve_embed_stage</code>'s <code>gpu_profile = gpu_slurm_given or (mode == "full" and has_gpu_detector)</code> (<code>:173</code>) then applies §4.1's measure rule with no GUI-side copy.</p>
+<h3 id="pb3-stage-4-refusals-in-rc-staged-gpu-refusal">PB3. Stage-4 refusals in <code>rc-staged-gpu-refusal</code></h3>
+<p><strong>Today.</strong> <code>_staged_gpu_capability</code> catches <code>UnstageableGpuDetectorError</code> only (<code>_callbacks.py:268-271</code>). The alert reads "This pipeline cannot be run: {refusal}" (<code>:1856-1858</code>). Run is disabled while it is open (<code>update_run_disabled</code>, <code>:2839-2855</code>). The launch seam re-checks before allocating (<code>:2039-2041</code>).</p>
+<p>A Stage-4 refusal today reaches the user only as an exit-2 failure with stderr: a <code>SlurmSubmitError</code> on SLURM, "local process exited with status 2" locally.</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Refusal</th>
+<th>Where (<code>_cli_embed_stage.py</code>)</th>
+<th>Inputs</th>
+<th>GUI</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>R1 <code>--embed-stage gpu</code> with <code>--mode process</code></td>
+<td><code>refuse_embed_stage_for_process</code>, <code>:177-187</code></td>
+<td>mode</td>
+<td><strong>cannot occur</strong>: the GUI has no process mode. No GUI code</td>
+</tr>
+<tr class="even">
+<td>R2 <code>gpu</code> with a CPU-pinned or stageless embedder</td>
+<td><code>refuse_unstageable_embedders(pipeline, requested, resolved)</code>, <code>:190-226</code></td>
+<td>pipeline, control, mode</td>
+<td>shown statically, in full and measure mode. Inputs gain <code>rc-radio-embed-stage</code></td>
+</tr>
+<tr class="odd">
+<td>R3 explicit flag conflicting with the recorded stage</td>
+<td><code>refuse_embed_stage_switch</code>, <code>:229-281</code></td>
+<td>recorded <code>embed_stage</code> (<code>EMBED_STAGE_CONFIG_KEY</code>, <code>:83</code>, in <code>processing_state.json</code>) and the control</td>
+<td>full mode only, when the output already holds a run. Never in measure (§3.4)</td>
+</tr>
+<tr class="even">
+<td>U12 CPU-profile refusal (recorded <code>gpu</code>, <code>auto</code>, SLURM, no GPU profile)</td>
+<td>inside <code>adopt_recorded_embed_stage</code>, <code>:284-347</code> (raised <code>:315-321</code>)</td>
+<td>recorded stage, control, mode, and whether <code>--gpu-slurm</code> is set</td>
+<td>full mode only, as R3</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Behaviour.</strong></p>
+<ul>
+<li><strong>The probe.</strong> It becomes <code>_launch_refusal(pipeline_path, cli_mode, exec_mode, embed_stage, gpu_slurm_given, output_dir) -&gt; str | None</code>. It runs the CLI's checks in the CLI's order (<code>phenotypicCLI.py:3310-3314, 3334, 3384-3402</code>), catching <code>click.UsageError</code>:
+<ul>
+<li>the <code>UnstageableGpuDetectorError</code> check, <strong>in full mode only</strong>, because <code>uses_staged_gpu_strategy</code> returns <code>False</code> for measure (§3.4);</li>
+<li>R2;</li>
+<li>R3/U12, in full mode only;</li>
+<li>PB5's measure refusals, in measure mode.</li>
+</ul></li>
+<li><strong>The alert text</strong> is the CLI's message, unchanged, under the existing "This pipeline cannot be run:" prefix.</li>
+<li><strong>Inputs.</strong> The callback adds <code>RC_RADIO_EMBED_STAGE</code>, PB5's mode selector, the GPU-profile textarea and <code>RC_STORE_FORM_STATE</code>, for the output directory. That last pattern already exists in <code>show_reference_metadata_requirement</code>.</li>
+<li><strong>The recorded stage</strong> is read with <code>load_processing_state</code> (<code>_cli_state_management.py:249</code>). A missing state means no R3/U12 check.</li>
+<li><strong>[call]</strong> The run console has no <code>--restart</code> or <code>--overwrite</code> (<code>_state.py:67-113</code>), so in full mode an output holding a processing state is a continuation. That matches the CLI's <code>continuing</code> (<code>phenotypicCLI.py:3242-3248</code>) for every full-mode argv the GUI can produce.</li>
+<li><strong>The launch seam</strong> (<code>_callbacks.py:2039-2041</code>) calls the same function, so a click racing a form change is refused before allocating.</li>
+</ul>
+<p><strong>Approaches for R3/U12:</strong></p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th></th>
+<th>Approach</th>
+<th>Pro</th>
+<th>Con</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>a</td>
+<td>Static, with the CLI's functions (recommended)</td>
+<td>instant, same text, Run disabled</td>
+<td>must read <code>processing_state.json</code> on each form change, a small JSON read</td>
+</tr>
+<tr class="even">
+<td>b</td>
+<td>Run <code>--dry-run</code> in the background on each change</td>
+<td>the CLI decides everything</td>
+<td>spawns a process per edit; slow on a large inventory; and impossible in measure mode (§3.4)</td>
+</tr>
+<tr class="odd">
+<td>c</td>
+<td>Leave R3/U12 to the launch failure</td>
+<td>no work</td>
+<td>the user learns after clicking Run, from a log</td>
+</tr>
+</tbody>
+</table></div>
+<p>Pick (a). The CLI stays the final authority: a refusal the probe misses still fails the launch with exit 2, as today.</p>
+<h3 id="pb4-ledgers-tutorial-text-and-screenshots">PB4. Ledgers, tutorial text and screenshots</h3>
+<ul>
+<li><strong><code>FEATURES.md</code>:</strong>
+<ul>
+<li>new rows:
+<ul>
+<li>the Embed-stage control;</li>
+<li>the Auto-resolution hint;</li>
+<li>the GPU section itself, which has no row today (<code>FEATURES.md</code> has only <code>:443</code> and <code>:455</code> around it);</li>
+<li>the Stage-4 refusals;</li>
+<li>the measure-mode selector, its disabled Validate, and its form rules (PB5);</li>
+</ul></li>
+<li>update <code>:455</code> "Unstageable GPU pipeline refusal" to cover R2, R3 and U12.</li>
+</ul></li>
+<li><strong><code>WORKFLOWS.md</code>.</strong>
+<ul>
+<li>Update <code>run_local</code> (<code>:40</code>) and <code>run_slurm</code> (<code>:41</code>) to name measure mode and Stage 4.</li>
+<li><code>_capture_run_slurm</code> (<code>scripts/capture_gui_tutorial_screenshots.py:1085</code>) sets GPUs to 0 (<code>:1139</code>) and never opens the GPU section.</li>
+<li><strong>[call]</strong> Add one frame of the GPU section for a DINO-only pipeline with Auto → GPU, and one frame of the mode selector set to Measure in <code>_capture_run_local</code> (<code>scripts/capture_gui_tutorial_screenshots.py:1058</code>). These show new chrome, which D4 (a status, not chrome) does not cover. No new workflow row: measure is a variant of the two run workflows, not a new end-to-end flow.</li>
+<li>Regenerate the full set.</li>
+</ul></li>
+<li><strong>Tutorial text:</strong> <code>04_run_local.md</code> and <code>05_run_slurm.md</code> gain a measure-mode section, with what it refuses (§3.4) and what the GUI cannot do (PB5).</li>
+</ul>
+<h3 id="pb5-measure-mode-in-the-run-console-d6">PB5. Measure mode in the run console (D6)</h3>
+<p><strong>Today.</strong></p>
+<ul>
+<li><code>to_argv</code> always emits <code>--mode full</code>, with <code>--input</code> required (<code>run_console/_state.py:540-566</code>).</li>
+<li><code>ExecutionMode</code> is <code>Literal["local","slurm"]</code> (<code>sdk_/typing_.py:212</code>); it is the execution mode, not the CLI mode.</li>
+<li><code>RunMode</code> on the registry record is <code>Literal["local","slurm","validate","unknown"]</code> (<code>shell/_runs_registry.py:88</code>).</li>
+<li>No GUI site emits <code>--mode measure</code>.</li>
+</ul>
+<p><strong>The selector.</strong> A two-way radio, <code>rc-radio-cli-mode</code>: <strong>Full</strong> (default) or <strong>Measure</strong>. It sits beside <code>rc-radio-mode</code> (local/SLURM, <code>_ids.py:105</code>), because the two are independent.</p>
+<ul>
+<li><strong>The state field.</strong> <code>RunConsoleState.cli_mode: Literal["full","measure"] = "full"</code>. It is read tolerantly from older presets, and it is part of the command digest.</li>
+<li><strong>The argv.</strong> <code>to_argv</code> emits <code>--mode &lt;cli_mode&gt;</code>.</li>
+</ul>
+<p><strong>Inputs measure needs, and what the form does with each</strong> (CLI rules in §3.4):</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Form slot</th>
+<th>Full</th>
+<th>Measure</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Pipeline</td>
+<td>required</td>
+<td>required (<code>:3121-3123</code>)</td>
+</tr>
+<tr class="even">
+<td>Input folder</td>
+<td>required</td>
+<td><strong>hidden and never sent</strong>: <code>--input</code> is refused (<code>:2801-2806</code>)</td>
+</tr>
+<tr class="odd">
+<td>Output folder</td>
+<td>any</td>
+<td><strong>must exist and hold a forward run</strong>. The form checks existence (<code>:3124-3130</code>) and <code>_output_holds_a_run</code> (<code>shell/_runs_registry.py:187-200</code>), and otherwise shows "Measure re-measures an existing output; choose a folder a previous run wrote" with Run disabled</td>
+</tr>
+<tr class="even">
+<td>Metadata</td>
+<td>sent; snapshotted</td>
+<td>sent; used for the join, <strong>not snapshotted</strong> (<code>:1331</code>). The help text says so. <strong>[call]</strong> Keep the handoff, because the CLI accepts and uses it</td>
+</tr>
+<tr class="odd">
+<td><code>--retry-failures</code></td>
+<td>offered</td>
+<td><strong>disabled and never sent</strong> (<code>:3100-3105</code>)</td>
+</tr>
+<tr class="even">
+<td>Advanced <code>sample</code></td>
+<td>offered</td>
+<td><strong>disabled and never sent</strong> (<code>:3113-3119</code>)</td>
+</tr>
+<tr class="odd">
+<td>Advanced <code>nrows</code>/<code>ncols</code>/<code>image_type</code>/<code>workers</code></td>
+<td>sent</td>
+<td>sent; the CLI accepts them (no measure refusal)</td>
+</tr>
+<tr class="even">
+<td><code>--slurm</code>, <code>--gpu-slurm</code>, <code>--gpu-shards</code>, <code>--embed-stage</code></td>
+<td>sent</td>
+<td>sent; Stage 4 is measure's re-embed path (U4)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>[call]</strong> Never send a refused flag; don't rely on the CLI to refuse it. The argv-builder test asserts that no measure-mode argv contains <code>--input</code>, <code>--dry-run</code>, <code>--retry-failures</code>, <code>--sample</code>, <code>--restart</code> or <code>--overwrite</code>.</p>
+<p><strong>Static refusals in measure mode</strong>, shown in <code>rc-staged-gpu-refusal</code> with Run disabled (PB3):</p>
+<ul>
+<li><strong>A pipeline whose measurers read reference metadata.</strong> Shown with the CLI's message from <code>_refuse_measuring_reference_pipeline</code> (<code>phenotypicCLI.py:761-773</code>). The existing <code>rc-reference-metadata-required</code> alert describes a <em>full</em> run's requirement, so it stays closed in measure mode.</li>
+<li><strong>An output with both <code>metadata.csv</code> and <code>metadata.tsv</code>.</strong> Shown with the <code>resolve_metadata_snapshot_path</code> message (#281 B5).</li>
+<li><strong>R2</strong>, from PB3.</li>
+</ul>
+<p><strong>Validate in measure mode.</strong> The CLI refuses <code>--dry-run</code> with measure (<code>:2811-2814</code>), so there is no dry run to drive.</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th></th>
+<th>Approach</th>
+<th>Pro</th>
+<th>Con</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>a</strong></td>
+<td><strong>Disable Validate in measure mode, with the tooltip "Measure has no dry run (the CLI refuses --dry-run with --mode measure)". The static refusals above are the pre-launch check (recommended)</strong></td>
+<td>Honest; no CLI change</td>
+<td>No <code>sbatch --test-only</code> profile check before a SLURM measure</td>
+</tr>
+<tr class="even">
+<td>b</td>
+<td>Validate runs <code>--mode full --dry-run</code> against the same output</td>
+<td>exercises the SLURM profile preflight</td>
+<td>Validates a different command: full mode's input scan and refusals, not measure's, and it needs an <code>--input</code> measure doesn't have</td>
+</tr>
+<tr class="odd">
+<td>c</td>
+<td>Add a measure dry run to the CLI</td>
+<td>a real preflight</td>
+<td>A CLI feature outside both PRs' scope, and #282 decided against it</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>[call]</strong> Pick (a). The launch seam also refuses <code>action == "validate"</code> with <code>cli_mode == "measure"</code> (<code>_callbacks.py:2063-2066</code>), so a stale browser cannot send it.</p>
+<p><strong>How the registry records a measure run.</strong></p>
+<ul>
+<li><p><strong>The field.</strong> <code>RunRecord</code> gains <code>cli_mode: Literal["full","measure"] = "full"</code>, persisted and read tolerantly. <code>mode</code> (local/SLURM/validate) keeps its meaning.</p></li>
+<li><p><strong>Display.</strong> Recent Runs and the banner show <code>measure</code> beside the execution mode.</p></li>
+<li><p><strong>Local exit.</strong> <code>observe_local_exit</code> reads the exit code as the authority for a measure run:</p>
+<ul>
+<li><code>0</code> gives <code>complete</code> (U16);</li>
+<li><code>3</code> gives <code>complete_with_failures</code>;</li>
+<li><code>1</code> gives <code>failed</code>, with the CLI's last stderr line, which names the unfinished images (U16).</li>
+</ul>
+<p><code>_local_completion_evidence_conflict</code> (<code>_runs_registry.py:691-770</code>) is <strong>not</strong> applied, because a measure pass writes no forward completion marker. The marker it would read is the forward run's, and that says nothing about this pass.</p></li>
+<li><p><strong>N for a local measure exit <code>3</code>.</strong> <strong>[call]</strong> It comes from the terminal-failure journal rows this measure pass wrote (measure work ids, #281 P2 I5). If the plan finds no per-pass count on disk, the status is <code>complete_with_failures</code> with N unknown, shown as "complete · images failed". It is never <code>resolve_run_state</code>'s forward count, which cannot see measure failures (<code>_cli_wait.py:269-285</code>).</p></li>
+</ul>
+<p><strong>A SLURM measure: what the observer shows.</strong> The GUI never runs <code>phenotypic-wait</code>, so it never sees exit <code>5</code>. It derives the same outcome from disk through <code>finished_run_outcome</code> (PA4), which already contains measure's rules: <code>_generation_failures</code> counts measure failures by epoch, and a fence closed with a <code>terminal_status</code> is never "published" (<code>_cli_wait.py:182-242</code>). At the inactive-fence branch (<code>_slurm_observer.py:661-671</code>):</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Outcome</th>
+<th>Status</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>COMPLETE</code></td>
+<td><code>complete</code></td>
+<td>"measure pass complete"</td>
+</tr>
+<tr class="even">
+<td><code>COMPLETE_WITH_FAILURES</code></td>
+<td><code>complete_with_failures</code>, N from <code>_generation_failures</code></td>
+<td>"N images failed to re-measure; their previous measurements and embeddings are kept" (U8)</td>
+</tr>
+<tr class="odd">
+<td><code>ENDED_UNPUBLISHED</code>, with the fence <code>closed_by: finalizer</code> and <code>terminal_status: "failed"</code></td>
+<td><strong><code>incomplete</code></strong></td>
+<td>the fence's <code>terminal_error</code>, which is <code>unfinished_measure_line</code>: "re-run the same command"</td>
+</tr>
+<tr class="even">
+<td><code>ENDED_UNPUBLISHED</code> otherwise (cancelled, finalizer died)</td>
+<td><code>failed</code>, or <code>cancelled</code> per the existing cancel branch</td>
+<td>as today</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>[call]</strong> A U16 leftover is <code>incomplete</code>, not <code>failed</code>. <code>incomplete</code> already means "did not finish; re-running resumes it" (<code>FEATURES.md:585</code>), which is U16's own remedy. The observer gains a read of <code>terminal_status</code>/<code>terminal_error</code>; today it reads neither.</p>
+<p><strong>The embed-stage resolver in measure mode.</strong> <code>resolve_embed_stage_for_pipeline</code> (PB2) is called with <code>mode="measure"</code>:</p>
+<ul>
+<li>only <code>--gpu-slurm</code> counts as a GPU profile, so the GPU section is shown for a Stage-4-capable pipeline (or the <code>gpu</code> control) and never for a <code>GpuDetector</code> alone;</li>
+<li>R2 applies;</li>
+<li>R3/U12 do not (§3.4).</li>
+</ul>
+<p><strong>What measure mode in the GUI cannot do</strong>, stated plainly in the tutorial text and the FEATURES row:</p>
+<ol type="1">
+<li><strong>No Validate.</strong> There is no dry run, so no <code>sbatch --test-only</code> check of a SLURM measure's profile before submission.</li>
+<li><strong>No measure beside a live forward run.</strong> The CLI allows a measure pass to run beside live forward workers (<code>_refuse_measuring_reference_pipeline</code>'s docstring, <code>:764-765</code>). The GUI holds one generation per output, and its claim gate refuses an output a live run claims.</li>
+<li><strong>No measure over a CLI-launched run that has failures.</strong> The claim gate's "failed non-GUI processing state" refusal stays (D2), so such a run is measured from the CLI.</li>
+<li><strong>No reference-metadata pipelines.</strong> The CLI refuses them.</li>
+<li><strong>No per-image leftover list.</strong> A SLURM pass's unfinished images are named in the finalizer's log, not on disk in a form the GUI reads. The GUI shows the one-line count and points at the log.</li>
+<li><strong>No exit <code>5</code>.</strong> The GUI derives the waiter's outcome rather than receiving it, so the "unfinished" state appears when the observer next polls the fence, not at a process exit.</li>
+</ol>
+<p><strong>Tests:</strong></p>
+<ul>
+<li><strong><code>test_state.py</code>:</strong>
+<ul>
+<li>the measure argv is <code>--mode measure --pipeline … --output …</code> plus the allowed flags;</li>
+<li>the full set of refused flags is absent;</li>
+<li>a preset without <code>cli_mode</code> loads as full.</li>
+</ul></li>
+<li><strong><code>test_run_console_callbacks.py</code>:</strong>
+<ul>
+<li>the input slot is hidden in measure mode;</li>
+<li>Validate is disabled, and the seam refuses a stale validate;</li>
+<li>a missing or empty output disables Run with the message;</li>
+<li>a reference-metadata pipeline shows the CLI's refusal;</li>
+<li>the GPU section appears for a DINO-only pipeline in SLURM measure mode and not for a <code>GpuDetector</code>-only one;</li>
+<li>R3 is never evaluated in measure mode.</li>
+</ul></li>
+<li><strong><code>test_runs_registry.py</code>:</strong>
+<ul>
+<li>a measure record round-trips <code>cli_mode</code>;</li>
+<li>local exits 0, 3 and 1 map as specified, without the forward-marker check.</li>
+</ul></li>
+<li><strong><code>test_slurm_observer.py</code>:</strong> the four outcome rows, including a U16 fence giving <code>incomplete</code> with the <code>terminal_error</code> text.</li>
+<li><strong>An integration test against the real CLI:</strong> each argv the form can build for measure mode is accepted by the CLI's argument parsing. Drive <code>phenotypicCLI</code> with Click's <code>CliRunner</code> up to the first non-usage step, so no flag the GUI sends is refused.</li>
+</ul>
+<hr />
+<h2 id="6-test-strategy">6. Test strategy</h2>
+<p><strong>Instruments by stage</strong>, per the root <code>CLAUDE.md</code>:</p>
+<ul>
+<li><strong>Per task:</strong> the directly touched test files, about a minute, run on Slurm (<code>--partition=batch</code> or <code>intel</code>, explicit <code>--mem</code>/<code>--time</code>, never <code>preempt</code>, never <code>-n auto</code>, <code>QT_QPA_PLATFORM=offscreen</code>, <code>-o addopts= -m "not slow"</code>).</li>
+<li><strong>Per phase:</strong> the affected surface, derived from importers rather than directory names.
+<ul>
+<li><strong>PA1/PA4:</strong> <code>tests/unit/gui/run_console/</code>, <code>tests/unit/gui/shell/</code>, <code>tests/integration/gui/test_run_console_callbacks.py</code>, <code>tests/unit/gui/test_runs_registry_layout.py</code>, <code>tests/unit/gui/test_snapshot_status.py</code>, and the <code>_cli_wait</code> tests.</li>
+<li><strong>PA2/PA3:</strong> <code>tests/unit/gui/results_viewer/</code>.</li>
+<li><strong>PA5/PA8:</strong>
+<ul>
+<li><code>tests/unit/cli/</code>, <code>tests/integration/cli/</code>, <code>tests/unit/sdk_/</code>, <code>tests/gui/results_viewer/</code> and <code>tests/unit/gui/results_viewer/</code>;</li>
+<li><strong>every importer of <code>tests/_output_layout.py</code></strong> (62 files), because its <code>write_measurements_mirror</code> default changes;</li>
+<li>the error-tab and <code>_cli_error_outputs</code> tests.</li>
+</ul></li>
+<li><strong>PA6:</strong> <code>tests/unit/gui/{builder,shell,tune}/</code>, <code>tests/integration/gui/tune/</code>, <code>tests/integration/gui/test_tune_*.py</code>, <code>tests/unit/gui/analysis/</code>.</li>
+<li><strong>PA9:</strong> <code>tests/unit/gui/shell/</code>, <code>tests/unit/gui/builder/test_reference_metadata.py</code>, <code>tests/unit/gui/tune/</code>, <code>tests/unit/analysis/</code> (the <code>ExpectedVsDetectedCount</code> change), <code>tests/gui/browse/</code>.</li>
+<li><strong>PA10:</strong> <code>tests/unit/gui/results_viewer/</code>, <code>tests/unit/gui/analysis/</code>, <code>tests/unit/gui/test_curation_does_not_unfence_the_run.py</code>, and the curation tests under <code>tests/gui/results_viewer/</code>.</li>
+<li><strong>PB1–PB5:</strong> <code>tests/unit/gui/run_console/</code>, <code>tests/integration/gui/test_run_console_callbacks.py</code>, <code>tests/unit/gui/shell/</code>, <code>tests/unit/cli/</code> (the <code>_cli_embed_stage</code> refactor).</li>
+</ul></li>
+<li><strong>The GUI lanes:</strong>
+<ul>
+<li><strong><code>testpaths</code>:</strong> <code>tests/unit</code>, <code>tests/integration</code> and <code>tests/gui</code>.</li>
+<li><strong>The Playwright e2e:</strong> <code>PLAYWRIGHT=1 uv run pytest tests/e2e/gui</code>. It is outside <code>testpaths</code> (<code>tests/e2e/conftest.py:51</code>), and <code>ci_flaky</code> is deselected as in CI. It runs once per PR, after the fixture-name flip (PA6), with at least the run-console, results viewer, analysis and tune specs.</li>
+</ul></li>
+<li><strong>The ledger gates:</strong> <code>scripts/check_features_md.py</code>, <code>--strict</code> for the merge gate, and <code>scripts/check_workflows_md.py -v</code>. These are the <code>features-md-gate</code> and <code>workflows-md-gate</code> CI jobs.</li>
+<li><strong>The 13 reds:</strong> all green, with no <code>xfail</code>, skip, deselect or <code>-k</code>, in the PR A per-phase run (§4 PA3). A red outside the 13 is a real failure.</li>
+<li><strong>The docs build</strong> (PA8 edits how-to pages and a notebook): one Slurm job, <code>sphinx-build -j "$SLURM_CPUS_PER_TASK" -D nbsphinx_execute=never</code>. Then read the rendered HTML of the changed pages, since an exit code of 0 does not mean the pages rendered.</li>
+<li><strong>The live SLURM lane.</strong>
+<ul>
+<li><strong>CPU:</strong> <code>PHENOTYPIC_RUN_LIVE_SLURM=1</code>, <code>tests/integration/gui/test_run_console_slurm_live.py</code>, run once on PR A after its rebase and once on PR B. It is the only check that runs a real exit <code>4</code> through the GUI.</li>
+<li><strong>GPU (D7):</strong> one live GPU-stage SLURM launch from the GUI, in PR B:
+<ul>
+<li><p><strong>The pipeline.</strong> A DINO-only pipeline (DINOv2 <code>small</code>, weights cached), over the live harness's one 96×96 TIFF. Auto resolves to GPU Stage 4 through the GUI's GPU section.</p></li>
+<li><p><strong>Profiles.</strong> The CPU stages use <code>--slurm partition=batch</code> (or <code>intel</code>) with explicit <code>mem</code>/<code>time</code>. The GPU stage's <code>--gpu-slurm</code> profile is either:</p>
+<ul>
+<li><code>partition=exfab account=exfab gpus_per_node=1</code>; or</li>
+<li><code>partition=short_gpu constraint=gpu_latest time=≤01:55:00</code> (no account).</li>
+</ul>
+<p>Pick between them by running <code>sbatch --test-only</code> for both and taking the earlier predicted start. <strong>Never <code>preempt</code>.</strong> <code>short_gpu</code> rejects a job with no GPU, so it is never the CPU profile.</p></li>
+<li><p><strong>Assertions.</strong> The submitter exits <code>4</code> and the record is <code>queued</code>. The observer reaches <code>complete</code>. The store holds the embedding table under its run folder, with <code>device_name</code> recorded.</p></li>
+<li><p><strong>Harness work.</strong> The harness (<code>tests/_support/live_slurm</code>) admits only "bounded CPU-only resources" (<code>test_run_console_slurm_live.py:1-9</code>), so this case needs a bounded GPU profile added to it. That is plan work in PR B, opt-in under its own flag (<code>PHENOTYPIC_RUN_LIVE_SLURM_GPU=1</code>).</p></li>
+<li><p><strong>When.</strong> It runs once before PR B is opened, after PR B is cut on the new base.</p></li>
+</ul></li>
+</ul></li>
+<li><strong>End of each PR:</strong> the full sharded regression once (the committed <code>docs/superpowers/plans/2026-08-18-ome-zarr-image-store/run_unit_suite.sbatch</code> recipe, env synced with <code>--extra tune --extra topology</code>). For PR A, run it <strong>after the rebase onto <code>origin/main</code></strong>; a pre-rebase run is not the PR's baseline. For PR B, run it on the base that contains PR A.</li>
+</ul>
+<hr />
+<h2 id="7-risks">7. Risks</h2>
+<ul>
+<li><p><strong>R1. PR A edits two tests to green them (#7, #8).</strong> A reviewer could read that as weakening. The mitigation is the property-preservation rule in §3.3, stated in each commit message.</p></li>
+<li><p><strong>R2. A new terminal status reaches code that enumerates statuses</strong> without going through the shared sets:</p>
+<ul>
+<li><code>results_viewer/_qc_tab/_rebuild.py:171-172</code>;</li>
+<li><code>results_viewer/_discovery_contracts.py:16</code>;</li>
+<li>any JS that keys on the CSS class.</li>
+</ul>
+<p>The mitigation is a grep gate in the plan (every <code>"complete"</code> / <code>"failed"</code> literal under <code>_gui/</code> is reviewed) and a test that renders each <code>RunStatus</code> in Recent Runs.</p></li>
+<li><p><strong>R3. The error-analysis schema bump touches a rollback-capable publisher</strong> shared with the CLI's recompile re-emit. A version-1 journal on disk mid-rollback must still validate. Both directions are pinned with tests.</p></li>
+<li><p><strong>R4. The two aggregate-proof checks disagree after curation</strong> (§3.2). PA4 and PA10 avoid <code>valid_aggregate_snapshot</code>.</p>
+<ul>
+<li><strong>Where the strict check still applies.</strong> The waiter's <code>_published</code> uses it as its third disjunct (<code>_cli_wait.py:238-242</code>). A SLURM generation whose fence its finalizer did not close, curated before a <code>phenotypic-wait</code> polls it, would read unpublished.</li>
+<li><strong>Why the risk is small.</strong> The first disjunct (fence closed by finalizer) covers every normal SLURM finish.</li>
+<li><strong>Scope.</strong> This predates PR A, but PA10 makes curation reachable on more runs. Recorded, not changed.</li>
+</ul></li>
+<li><p><strong>R5. <code>test_measurement_join_migration_run.py</code></strong> was skipped at #281's gate and again here (the live run is absent). Its v2 state is unverified until that run is republished.</p></li>
+<li><p><strong>R6. PA8 removes a deliverable users open in Excel</strong>, and that a dashboard download command and outside scripts may name. Excel opens a <code>.tsv</code>, but by import, not by double-click on every platform. The README and the how-to pages say so, and an old tree keeps its CSV until it is finalized again.</p></li>
+<li><p><strong>R7 (PR B). The probe reads <code>processing_state.json</code> on every form change.</strong> It is bounded to one small JSON read and memoised on mtime, like the classifier (<code>shell/_classifier.py:201-216</code>).</p></li>
+<li><p><strong>R8. The shared test helper's default flips</strong> (<code>write_measurements_mirror(csv=False)</code>), reaching 62 importers. Mitigation: run every importer at the PA5/PA8 phase gate, and attribute each red in isolation before acting on it.</p></li>
+<li><p><strong>R9. The merge-order window (D5).</strong> #281 merges to <code>main</code> before PR A. Until PR A merges, <code>main</code> carries every break in §3:</p>
+<ul>
+<li>a SLURM launch that can read <code>failed</code>, or cancel its own generation;</li>
+<li>an empty Colony picker;</li>
+<li>a tune Deploy refusal;</li>
+<li>13 red GUI tests.</li>
+</ul>
+<p>#281's own spec forbids that order (§2.2), and #283 says the same. See §11 Q1.</p></li>
+<li><p><strong>R10. Rebase drift.</strong> PA citations are at <code>36b9e840e</code>. #281 may change again before it merges, and <code>main</code> will hold other merges. Every citation, and the 13-red table, is re-verified after the rebase, and the reds are re-run there (§1).</p></li>
+<li><p><strong>R11. PA9 changes a public analyzer's accepted input</strong> (<code>ExpectedVsDetectedCount</code> gains <code>.tsv</code>). It widens the input set and refuses nothing it accepted before.</p></li>
+</ul>
+<hr />
+<h2 id="8-follow-up-issue-draft-not-to-be-opened-by-this-work">8. Follow-up issue (draft, not to be opened by this work)</h2>
+<blockquote>
+<p><strong>Title:</strong> GUI: run picker, DVC commit hint, embeddings view (follow-up to #283)</p>
+<ul>
+<li><strong>Run picker.</strong> The viewer reads a store's latest measuring run (<code>tables/&lt;n&gt;-&lt;sha12&gt;/</code>, #281 D6a). Let users pick another run, and always say which run is shown. That run comes from <code>latest_measurement_run</code>, and is <code>&lt;n&gt;-unknown</code> when the pipeline digest is unknown.</li>
+<li><strong>DVC hint.</strong> After curation edits <code>deliverables/</code> in a DVC-tracked output, say that <code>dvc commit</code> is needed (#281 C9 documents the step).</li>
+<li><strong>Embeddings view.</strong> Show which embedding tables a store holds (<code>tables/&lt;run&gt;/embeddings/&lt;model&gt;/&lt;layer&gt;/&lt;region&gt;/</code>, <code>TableRun.embedding_path</code>). Viewing vectors is out of scope there too, unless decided otherwise.</li>
+<li><strong>Restored fence.</strong> A <code>dvc checkout</code>-restored active lifecycle fence reads <code>active</code> in the GUI launch check until the next CLI run retires it (#281 hand-off, P2). Ask the scheduler, as <code>_refuse_live_slurm_run</code> does, or call the same retirement.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="9-my-judgement-calls-for-review">9. My judgement calls (for review)</h2>
+<ol type="1">
+<li><strong>The two stale tests.</strong> #7 and #8 are fixed by test edits that keep each test's property (§3.3).</li>
+<li><strong>SLURM exit <code>0</code>/<code>3</code> means "finished without submitting"</strong>, and is never bound to an earlier generation's job set (PA1 b).</li>
+<li><strong>One sdk_ helper names the payload a record-less reader reads</strong>, for both layouts (PA2 b).</li>
+<li><strong>One public <code>finished_run_outcome</code> in <code>_cli_wait.py</code></strong>, used by the waiter and every GUI entry point. Its generation-less callers also require <code>aggregate_proof_is_current</code>, and it never asks <code>valid_aggregate_snapshot</code> (PA4).</li>
+<li><strong>A new terminal status <code>complete_with_failures</code> plus <code>failed_images</code></strong>, coloured <code>--oi-orange-text</code> (PA4 a).</li>
+<li><strong>A failed TSV write unlinks the TSV.</strong> A stale CSV is retired only after a successful TSV write (PA5).</li>
+<li><strong>Error analysis moves to TSV</strong> under a version-2 receipt. Version 1 is still read, and the live CSV is retired after publishing (PA5).</li>
+<li><strong>One sdk_ predicate, <code>is_pipeline_config_path</code>, for every listing surface</strong> (PA6).</li>
+<li><strong>PA9 extends <code>ExpectedVsDetectedCount</code> to <code>.tsv</code></strong>, so the tune pickers' new suffix is usable.</li>
+<li><strong>The mutation receipt records the failed count N</strong> (PA10).</li>
+<li><strong>The embed-stage control</strong> sits outside the SLURM-only section, is disabled without an embedder, and emits nothing for <code>auto</code> (PB1).</li>
+<li><strong>A local no-CUDA <code>gpu</code> run surfaces as a failed run</strong>, not in the refusal alert (PB1).</li>
+<li><strong>One resolver.</strong> A public <code>resolve_embed_stage_for_pipeline</code> is factored out of <code>resolve_embed_stage_for_config</code>. The GUI passes <code>mode</code> from PB5's selector (PB2 c).</li>
+<li><strong>R3/U12 are predicted statically</strong> from <code>processing_state.json</code>, in full mode only (PB3 a).</li>
+<li><strong>Two new frames in PR B</strong> (the GPU section, the mode selector), and no new workflow row (PB4).</li>
+<li><strong>Measure mode never sends a flag the CLI refuses</strong>, and it keeps the <code>--metadata</code> handoff (PB5).</li>
+<li><strong>Validate is disabled in measure mode</strong> (PB5 a).</li>
+<li><strong>A measure run's local exit code is authoritative.</strong> N comes from the pass's own journal rows, or is shown as unknown (PB5).</li>
+<li><strong>A U16 leftover SLURM measure reads <code>incomplete</code></strong> with the fence's <code>terminal_error</code> (PB5).</li>
+</ol>
+<hr />
+<h2 id="10-decisions-user-2026-11-24">10. Decisions (user, 2026-11-24)</h2>
+<p>These settle the eight questions of the first draft.</p>
+<ul>
+<li><strong>D1. Retire <code>measurements.csv</code>.</strong> PR A includes the CLI change (PA8). Curation writes <code>.parquet</code>, then <code>.tsv</code> (PA5). Readers still fall back to <code>.csv</code> in older trees.</li>
+<li><strong>D2. Curation of a <code>complete_with_failures</code> run is allowed</strong> (PA10). Claiming a CLI-launched run for <code>--retry-failures</code> stays refused.</li>
+<li><strong>D3. The snapshot badge is in scope:</strong> "Run complete · N images failed" (PA4).</li>
+<li><strong>D4. No new tutorial frame for the status.</strong> It is documented in text (PA7).</li>
+<li><strong>D5. PR A targets <code>main</code> after #281 merges.</strong> It is built on #281's branch now, and before it is opened it is rebased onto the latest <code>origin/main</code>, with every citation re-verified. PR B is cut after #282 has been rebased or merged onto a <code>main</code> that contains PR A (§1).</li>
+<li><strong>D6. Measure mode joins the run console in PR B</strong> (PB5).</li>
+<li><strong>D7. One live GPU-stage SLURM launch from the GUI in PR B,</strong> on <code>exfab</code> or <code>short_gpu</code>, never <code>preempt</code> (§6).</li>
+<li><strong>D8. TSV-capable metadata pickers join PR A</strong> (PA9).</li>
+<li><strong>D9. Hold #281, then merge back to back</strong> (settles R9, the <code>main</code> window). PR A is built and reviewed on #281's branch first. When PR A is ready, #281 merges to <code>main</code>; PR A is then rebased onto the fresh <code>origin/main</code>, its citations, the 13-red table and its checks are re-run there, and it merges at once. #281's merge gate ("not before #283's fixes") is thereby kept in substance: <code>main</code> never sits on the §3 breaks beyond that short gap.</li>
+</ul>
+<hr />
+<h2 id="11-open-questions-only-the-user-can-answer">11. Open questions (only the user can answer)</h2>
+<p>None. D9 settled the last one (the <code>main</code> window).</p>
+</section></main>
+<footer>Rendered from docs/superpowers/specs/2026-11-24-gui-dvc-followups/design.md. The Markdown is the source of truth: changes go there first, then this page is re-rendered.</footer>
+</div>
