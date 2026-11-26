@@ -22,10 +22,8 @@ submitter's exit by `RunExitCode`; `complete_with_failures` is a terminal status
     (`:1464-1541`), which calls them;
   - factor the exclusion predicate out of `_advisories` (`:1680-1695`) into
     `excluded_store_names`, which `_advisories` then calls (R2-C1).
-- Modify: `src/phenotypic/sdk_/_io_constants.py`: add `FENCE_CLOSED_BY_FINALIZER = "finalizer"`;
-  `src/phenotypic/_cli/_cli_slurm_lifecycle.py:47` imports it from sdk_ instead of defining it.
 - Modify: `src/phenotypic/sdk_/__init__.py`: export `run_finished_with_failures`,
-  `excluded_store_names`, `FENCE_CLOSED_BY_FINALIZER` beside `aggregate_proof_is_current`
+  `excluded_store_names` beside `aggregate_proof_is_current`
   (`:455, 645`).
 - Modify (pinned, deliberately; R2-I1): `tests/unit/sdk_/test_run_state.py:56-75`
   (`test_the_demoted_sources_live_only_under_diagnostics`: the field set gains the two names,
@@ -34,7 +32,13 @@ submitter's exit by `RunExitCode`; `complete_with_failures` is a terminal status
 - Create (helpers), in `tests/_output_layout.py`:
   - `authorize_measurements(root: Path, stem: str, *, projectable: bool = True) -> None`:
     moved from `tests/unit/sdk_/test_run_state.py`'s module-local `_authorize_measurements`
-    (used by `_build_excluded_store_run`, `:654-690`), which then imports it.
+    (used by `_build_excluded_store_run`, `:654-690`; call sites `:669, 670, 685, 686, 1339`),
+    which then imports it. **The module's one sanctioned hand-edit** (R3-M3): with
+    `projectable=False` it pops the table descriptor from the store's root `zarr.json`
+    (`test_run_state.py:575-581`), the shape
+    `tests/unit/cli/test_finalize_run.py::_strip_measurement_descriptor` (`:1458`) also builds,
+    because no writer produces an unprojectable store. Its docstring says so, against the
+    module's real-publishers rule (`:448-470`).
   - `build_run_with_failures(tmp_path: Path, *, failed_stems: Sequence[str] = ("b",), unresolved_stems: Sequence[str] = (), unprojectable_stems: Sequence[str] = (), late_stems: Sequence[str] = (), process_only_layer: str | None = None) -> Path`.
     - **Stems (R2-M2):** the inventory is `FIXTURE_STEMS` (`("a", "b")`, `:191`) ∪ every
       named stem, in one dataset, `FIXTURE_DATASET` (`"plate"`, `:190`). A store is named
@@ -56,13 +60,13 @@ submitter's exit by `RunExitCode`; `complete_with_failures` is a terminal status
 **Interfaces:**
 - Consumes: `resolve_run_state(output_dir, depth=...) -> RunState`; `_valid_aggregate_proof`
   (`:1397`); `_source_set_binding` (`:1542`); `aggregate_publication_marker_path`,
-  `master_measurements_parquet_path`, `measurements_parquet_path`, `slurm_lifecycle_path`;
+  `master_measurements_parquet_path`, `measurements_parquet_path`;
   `canonical_digest` (`sdk_/_digests.py:46`); `RunState.images[work_id].verdict`, `.identity`.
 - Produces:
   - `run_finished_with_failures(state: RunState, output_dir: Path) -> int | None`: spec PA4
     steps 1–5. Its disk reads are the aggregate proof, and, in the no-proof arm only, three
-    existence checks (the marker path, the two Parquet deliverables) and the lifecycle file. It
-    never reads `processing_state.json`.
+    existence checks (the marker path, the two Parquet deliverables). It reads no fence
+    (R3-I1) and never reads `processing_state.json`.
   - `_identity_digests_match(proof: Mapping[str, object], identity: RunIdentity) -> bool`;
     `_source_set_matches(binding: Mapping[str, object], verified: Sequence[str]) -> bool`.
   - `excluded_store_names(images: Mapping[str, ImageState]) -> tuple[str, ...]`: sorted
@@ -154,10 +158,16 @@ def test_an_all_failed_restart_with_no_deliverables_is_confirmed(tmp_path):
     out = build_run_with_failures(tmp_path); restart_and_fail_everything(out, clear_deliverables=True)
     assert run_finished_with_failures(_state(out), out) == 2
 
-@pytest.mark.parametrize("fence,expected", [("finalizer", 2), ("cancelled", None), ("finalizer_failed", None)])
-def test_an_all_failed_run_reads_its_fence(tmp_path, fence, expected):    # R2-M4
+@pytest.mark.parametrize("fence", ["finalizer", "cancelled", "finalizer_failed"])
+def test_an_all_failed_run_ignores_any_fence(tmp_path, fence):            # R3-I1
     out = build_run_with_failures(tmp_path, failed_stems=("a", "b")); close_fence(out, how=fence)
-    assert run_finished_with_failures(_state(out), out) == expected
+    assert run_finished_with_failures(_state(out), out) == 2
+
+def test_a_cancelled_slurm_generation_then_a_local_all_failed_run_is_confirmed(tmp_path):   # R3-I1
+    out = build_run_with_failures(tmp_path, failed_stems=("a", "b"))
+    close_fence(out, how="cancelled")            # an earlier SLURM generation, cancelled
+    continue_locally_all_failed(out)             # a local continuation writes no fence
+    assert run_finished_with_failures(_state(out), out) == 2
 
 def test_an_all_failed_run_with_an_unresolved_image_returns_none(tmp_path):
     out = build_run_with_failures(tmp_path, failed_stems=("a",), unresolved_stems=("b",))
@@ -179,11 +189,16 @@ def test_rule_one_still_proves_a_complete_run(tmp_path):
 
 The small helpers (`hold_active_fence`, `publish_image_success_for`,
 `append_retry_attempt_without_result`, `accept_and_fail`, `rewrite_mirror_rows`, `write_marker`,
-`restart_and_fail_everything`, `close_fence`, `read_config`, `_explode`) live in the test
+`restart_and_fail_everything`, `close_fence`, `continue_locally_all_failed`, `read_config`,
+`_explode`) live in the test
 module, each a call to a real writer (`initialize_slurm_lifecycle`, `cancel_generation`,
 `mark_generation_failed`, the `--restart` clearing function) or an `unlink`. `write_marker`'s two
 invalid kinds are the one hand-edit, because no writer produces an invalid marker; the test says
 so. None edits the failure journal by hand.
+
+`test_a_killed_retry_that_verified_nothing_stays_confirmed` is **documentation only** (R3-M4):
+no writer leaves a verdict-relevant row for an attempt with no outcome, so its tree equals the
+base case and it cannot fail. It is not counted in the mutation table.
 
 `test_a_master_that_merely_predates_an_image_claims_no_exclusion`
 (`tests/unit/sdk_/test_run_state.py:1351`) and
@@ -192,7 +207,7 @@ green unedited: they pin `excluded_store_names`' two answers through `_advisorie
 - [ ] **Step 2: Run them; every verdict test fails with `ImportError`.**
   `$PT tests/unit/sdk_/test_run_finished_with_failures.py`
 - [ ] **Step 3: Implement** the two `RunState` fields, the two helpers, `excluded_store_names`,
-  the constant move, the verdict; route `_run_proof_covers_current_inventory` through the
+  the verdict; route `_run_proof_covers_current_inventory` through the
   helpers (its process branch and `_source_set_binding` unchanged).
 - [ ] **Step 4: Run the new file plus `tests/unit/sdk_/test_run_state.py` (with the deliberate
   field-set edit) and `test_run_state_layering.py`; all pass.**
@@ -211,7 +226,6 @@ green unedited: they pin `excluded_store_names`' two answers through `_advisorie
   | step 4 marker-by-path | `test_an_all_failed_run_beside_any_marker_returns_none[valid]`, `[wrong_version]`, `[empty_outputs]` |
   | step 4 marker check rewritten through `_valid_aggregate_proof` | `[wrong_version]`, `[empty_outputs]` (the review's "absent vs invalid" mutant) |
   | step 4 no other-generation deliverable | `test_an_all_failed_restart_beside_an_old_master_returns_none` |
-  | step 4 finalizer-closed fence | `test_an_all_failed_run_reads_its_fence[cancelled]`, `[finalizer_failed]` |
   | step 5 (process) | `test_a_process_run_returns_none` |
   | `excluded_store_names`' `projectable is False` clause | `test_a_late_image_returns_none_and_names_no_store`, `test_a_master_that_merely_predates_an_image_claims_no_exclusion` |
 
@@ -279,7 +293,8 @@ def test_an_unprojectable_store_exits_5_naming_it(monkeypatch, tmp_path, capsys)
     code = wait_for_run(out, **no_live_jobs_published(monkeypatch, out))
     text = capsys.readouterr().out
     assert code is RunExitCode.ENDED_UNPUBLISHED
-    assert "leave out plate/c" in text and "re-measuring them" in text
+    assert "leave out plate/c" in text and "--mode measure" in text
+    assert "remove them from the input" not in text                              # R3-M1
 
 def test_a_rolling_input_gap_exits_5_naming_no_store(monkeypatch, tmp_path, capsys):   # R2-C1
     out = build_run_with_failures(tmp_path, late_stems=("c",))
@@ -313,6 +328,11 @@ def test_an_all_failed_slurm_run_exits_3(tmp_path):                           # 
                                                     # closes "terminal_incomplete" (_cli_checkpoint_handler.py:317-331, 395-401)
     assert _published(out, gen) is True
     assert finished_run_outcome(out, gen) is RunExitCode.COMPLETE_WITH_FAILURES
+
+def test_a_cancelled_slurm_then_local_all_failed_run_exits_3(monkeypatch, tmp_path):   # R3-I1
+    out = build_run_with_failures(tmp_path, failed_stems=("a", "b"))
+    close_fence(out, how="cancelled"); continue_locally_all_failed(out)
+    assert wait_for_run(out, **no_live_jobs_published(monkeypatch, out)) is RunExitCode.COMPLETE_WITH_FAILURES
 
 def test_accept_failures_stays_strict(monkeypatch, tmp_path):                  # D15
     out = build_run_with_failures(tmp_path, unprojectable_stems=("c",))
@@ -368,7 +388,11 @@ Every existing `decide_wait_outcome` test keeps its assertions; those that reach
     no-dashboard text.
   - `_foreign_run_conflict` returns `None` for a confirmed run; for an unconfirmed `failed`
     run it returns spec PA11's message: "output has an unfinished run with N failed image(s)
-    of M accepted; re-run it from the CLI or wait for it to finish".
+    of M accepted; re-run it from the CLI or wait for it to finish". When every accepted image
+    failed and `master_measurements.parquet` or `measurements.parquet` exists (the same
+    existence check as the verdict's step 4), it returns the R3-I2 message instead: "output has
+    N failed image(s) and a master from an earlier run; re-run with --retry-failures from the
+    CLI until an image verifies, or start over with --overwrite".
 
 - [ ] **Step 1: Write the failing tests.**
 
@@ -407,6 +431,22 @@ def test_a_dead_owner_release_keeps_n(tmp_path, dead_owner_pid):               #
 def test_an_all_failed_cli_run_is_claimable_for_retry_failures(tmp_path):      # D16
     out = build_run_with_failures(tmp_path, failed_stems=("a", "b"))
     assert RunRegistry._foreign_run_conflict(out) is None
+
+def test_a_cancelled_slurm_then_local_all_failed_run_is_claimable(tmp_path):   # R3-I1
+    out = build_run_with_failures(tmp_path, failed_stems=("a", "b"))
+    close_fence(out, how="cancelled"); continue_locally_all_failed(out)
+    assert RunRegistry._foreign_run_conflict(out) is None
+
+def test_an_all_failed_restart_beside_an_old_master_names_the_real_remedy(tmp_path):   # R3-I2
+    out = build_run_with_failures(tmp_path); restart_and_fail_everything(out)
+    msg = RunRegistry._foreign_run_conflict(out)
+    assert "a master from an earlier run" in msg
+    assert "--retry-failures from the CLI until an image verifies" in msg and "--overwrite" in msg
+    assert "re-run it from the CLI or wait" not in msg
+
+def test_rehydration_confirms_a_cancelled_all_failed_slurm_run(tmp_path):     # R2-M4, accepted
+    out = build_run_with_failures(tmp_path, failed_stems=("a", "b")); close_fence(out, how="cancelled")
+    assert RunRegistry._rehydrated_status(out)[0] == "complete_with_failures"   # twin: T5's observer test
 
 @pytest.mark.parametrize("status", sorted(_RUN_STATUSES))
 def test_recent_runs_renders_every_status(status):                             # spec R2, Minor 6
@@ -571,7 +611,8 @@ def test_a_finalizer_closed_fence_with_failures_is_complete_with_failures(tmp_pa
     obs = _bound_observer(reg, ...).observe_once()           # :202
     assert (reg.get(rec.run_id).status, reg.get(rec.run_id).failed_images) == ("complete_with_failures", 1)
 
-def test_a_cancelled_fence_with_failures_stays_failed(tmp_path): ...
+def test_a_cancelled_fence_with_failures_stays_failed(tmp_path): ...   # R2-M4 pinned: the live
+    # reading; T3's test_rehydration_confirms_a_cancelled_all_failed_slurm_run is its accepted twin
 def test_a_staged_terminal_incomplete_reaches_the_hook(tmp_path):      # Minor 16
     # orchestration phase "terminal_incomplete" (_cli_checkpoint_handler.py:398-401)
     ...; assert reg.get(rec.run_id).status == "complete_with_failures"

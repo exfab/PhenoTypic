@@ -624,16 +624,27 @@ judges the state it already resolved, at its own depth:
      terminal-incomplete (`_cli_checkpoint_handler.py:317-331`). So either file beside zero
      verified images was left by an earlier generation: `--restart` clears `.phenotypic/`,
      journal and marker included, but keeps `deliverables/` (`phenotypicCLI.py:3493-3500`).
-     Such a tree reads `failed`, not finished, and is re-run from the CLI or with `--overwrite`;
-   - **a fence, when one exists, was closed by its finalizer:** if `slurm_lifecycle_path(output_dir)`
-     exists, it is inactive, `closed_by == "finalizer"`, and has no `terminal_status`. A
-     cancelled all-failed SLURM run therefore reads `failed` here as it does in the observer,
-     instead of flipping to `complete_with_failures` at the next GUI restart (plan re-review
-     R2-M4). `FENCE_CLOSED_BY_FINALIZER` moves to `sdk_/_io_constants.py`, and
-     `_cli/_cli_slurm_lifecycle.py:47` re-exports it, so sdk_ need not import `_cli`.
+     Such a tree reads `failed`, not finished. A plain re-run, another `--restart`, or a
+     `--retry-failures` that verifies nothing leaves it so. What clears it is `--overwrite`, or
+     a `--retry-failures` run from the CLI that verifies at least one image, which then
+     publishes a proof and moves the run to the proof arm (plan re-review R3-I2). The claim gate
+     says exactly that (PA11).
 
    No finalization input is compared: nothing was published, so nothing can be stale. N is
    the number of accepted images.
+
+   **The arm reads no fence (plan re-review R3-I1).** A fence on disk may belong to an earlier
+   generation: a local run never writes or closes one (`phenotypicCLI.py:1152-1168`), so a
+   cancelled SLURM generation's fence outlives a later local continuation. A fence check would
+   veto that continuation (and a later `--mode measure` pass's failed fence, #282 U16). So:
+   - **a SLURM generation cancelled, then a local continuation in which every image fails,** is
+     confirmed: N is returned, the GUI can claim it for `--retry-failures`, and the waiter exits
+     `3` (`generation is None`, so `_published` is true);
+   - **a cancelled all-failed SLURM run** reads `failed` in the observer, through
+     `finished_run_outcome`, and `complete_with_failures` after a GUI restart, through the bare
+     verdict. This disagreement is **accepted and pinned** (plan re-review R2-M4): every
+     accepted image did fail, so the restart's reading is true, and the live reading reports
+     the cancel the user just made. `FENCE_CLOSED_BY_FINALIZER` stays where it is.
 5. **Not a process run.** A run whose config records `process_only_layer` returns `None` (N4).
    No caller needs a process arm: the waiter keeps its own rule 4 (`_cli_wait.py:356-364`),
    the GUI has no process mode, and the viewer does not open process trees. A process tree
@@ -711,8 +722,12 @@ arms call both, so they cannot drift. **[call]**
       `_advisories` and the waiter both call. The waiter computes it in `_run_snapshot`'s one
       pass and carries it on `RunSnapshot` (plan re-review R2-I4). The line: "phenotypic-wait:
       the published outputs leave out <list>, because their stores declare no table the
-      finalizer can project (its log under <logs> says why). Fix those stores by re-measuring
-      them, or remove them from the input, then re-run the same command." **[call]**
+      finalizer can project (its log under <logs> says why). Re-measure those stores with
+      `--mode measure`; its finalize republishes the outputs." **[call]** The remedy is the
+      existing advisory's ("the store has to be re-measured", `_run_state.py:1689-1695`) named as
+      a command. "Remove them from the input" is dropped: it is plausible (a continuation
+      rebuilds `work_ids` from the input scan, `phenotypicCLI.py:4072-4080`) but no cheap test
+      pins it (plan re-review R3-M1).
     - **Otherwise, the gap wording, which names no cause:** "phenotypic-wait: this submission
       published, but its published outputs no longer cover the run: images verified after it
       published, or the metadata, pipeline or input set changed. Re-run the same command."
@@ -957,7 +972,10 @@ The other tune surfaces move to §8, to be fixed when `/tune/` is re-mounted.
       images have no rows, and that the output can be relaunched with `--retry-failures`
       (PA11). If that relaunch is killed before it finalizes having verified at least one
       image, the GUI refuses the output, and it is resumed by re-running the same command from
-      the CLI (N7); one that verified nothing leaves the output as it was, still relaunchable. Never re-run the same
+      the CLI (N7); one that verified nothing leaves the output as it was, still relaunchable.
+      An all-failed run after a `--restart` that kept an earlier run's master cannot be
+      relaunched from the GUI: run `--retry-failures` from the CLI until an image verifies, or
+      start over with `--overwrite` (R3-I2). Never re-run the same
       output from the CLI and the GUI at once: nothing records a local CLI run's liveness, so
       the GUI cannot see it (D17);
   - **`06_view_results.md`:**
@@ -1256,6 +1274,13 @@ at once.
 The refusal message for an unconfirmed `failed` run no longer calls a GUI-launched run
 "non-GUI". It says "output has an unfinished run with N failed image(s) of M accepted; re-run
 it from the CLI or wait for it to finish".
+
+**The stale-deliverables case has its own message (plan re-review R3-I2).** When every accepted
+image failed and a master or mirror Parquet survives from an earlier generation (PA4 step 4),
+"re-run it from the CLI" would send the user round a no-op. `_foreign_run_conflict` decides the
+case from the same existence check, and says: "output has N failed image(s) and a master from
+an earlier run; re-run with --retry-failures from the CLI until an image verifies, or start over
+with --overwrite".
 
 **Tests** (`tests/unit/gui/shell/test_runs_registry.py`):
 - `test_a_failed_image_refuses_the_claim` (`:363-390`) is split into two tests:
@@ -1864,7 +1889,8 @@ FEATURES row:
 25. *Withdrawn (plan re-review R2-C1): no `excluded_work_ids` field.*
 26. **`excluded_store_names(images)` is one sdk_ helper** shared by `_advisories` and the waiter,
     and the waiter carries its result on `RunSnapshot` (PA4, D15).
-27. **The no-proof arm refuses stale deliverables and a non-finalizer fence** (PA4 step 4).
+27. **The no-proof arm refuses stale deliverables, and reads no fence** (PA4 step 4; the fence
+    clause is withdrawn, R3-I1).
 
 ---
 
@@ -1914,7 +1940,9 @@ These settle the first draft's eight questions, the merge-order question (D9), t
 - **D15 (user, 2026-11-25; plan finding 1). `--accept-failures` stays strict.** It maps only a
   final `3` to `0`. D14's exit `5` for an excluded unreadable store stays `5`, and the waiter's
   line names the excluded stores and says to fix or remove them (PA4). *The names come from the
-  per-image unprojectable-store predicate, never from a set difference (plan re-review R2-C1).*
+  per-image unprojectable-store predicate, never from a set difference (plan re-review R2-C1).
+  The remedy is worded as `--mode measure`; "remove" is dropped because no cheap test pins it
+  (R3-M1).*
 - **D16 (user, 2026-11-25; plan review Q1). An all-failed run is `complete_with_failures`**,
   through the verdict's explicit no-proof arm (PA4 step 4). The waiter stays at `3`, Recent
   Runs reads "complete · N failed", and the GUI can relaunch it with `--retry-failures` (D10).
@@ -2012,5 +2040,13 @@ that changed the spec:
 | **R2-I1** The pinned `RunState` field set | PA4: the field-set test and the `tracked_state.md` table change deliberately |
 | **R2-I2** The no-proof arm | PA4 step 4: the marker tested by path; no master or mirror Parquet from another generation; the killed-retry sentence corrected; PA11's N7 paragraph and PA7's tutorial line follow |
 | **R2-I4** The waiter keeps no `RunState` | PA4: `RunSnapshot` carries the names from the same pass |
-| **R2-M4** A cancelled all-failed run read two ways | PA4 step 4: a fence must be finalizer-closed; `FENCE_CLOSED_BY_FINALIZER` moves to sdk_ |
+| **R2-M4** A cancelled all-failed run read two ways | *Superseded by R3-I1:* the disagreement is accepted and pinned; no fence clause, no constant move |
 | **R2-M5** "under `commit_guard`" | PA8: "when one is given" |
+
+**Plan re-review of revision 3** (`plan-review.md`, "Re-review of revision 3"):
+
+| Finding | Fix |
+|---|---|
+| **R3-I1** The fence clause had no generation | Dropped, with the constant move. PA4 step 4 pins the cancelled-SLURM-then-local all-failed case (confirmed, claimable, exit `3`) and accepts R2-M4's observer/restart disagreement |
+| **R3-I2** The stale-deliverables remedy | PA4 step 4 states what clears the state; PA11 gives the case its own message; PA7's tutorial line matches |
+| **R3-M1** The remedy wording | PA4: `--mode measure` only; "remove them from the input" dropped. D15's note records it |

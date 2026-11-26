@@ -1,8 +1,8 @@
 # GUI Follow-ups Implementation Plan (#283 PR A, #282 GUI items PR B)
 
-**Status:** revision 3 · 2026-11-25 · revised per `reports/2026-11-24-gui-dvc-followups/plan-review.md`
-(the review, then its "Re-review of revision 2") and the user's decisions D15–D18; see
-"Revision 2" and "Revision 3" at the end
+**Status:** revision 4 · 2026-11-25 · revised per `reports/2026-11-24-gui-dvc-followups/plan-review.md`
+(the review and its re-reviews of revisions 2 and 3) and the user's decisions D15–D18; see
+"Revision 2" to "Revision 4" at the end
 **Spec:** `docs/superpowers/specs/2026-11-24-gui-dvc-followups/design.md`, as committed with this
 revision (decisions D1–D18, no open question)
 **Reviews behind the spec:** `docs/superpowers/reports/2026-11-24-gui-dvc-followups/spec-review.md`
@@ -65,8 +65,9 @@ shown, curated and relaunched as such, and the run console reaches #282's Stage 
 - **The verdict** is `run_finished_with_failures(state, output_dir)`; its config comes from
   `RunState.finalization_digests` and `.process_only_layer`, filled by `resolve_run_state`'s
   one read (spec PA4). An all-failed run is confirmed through the no-proof arm (D16), which
-  tests the marker **by path**, refuses a master or mirror Parquet left by another generation,
-  and requires a finalizer-closed fence when a fence exists.
+  tests the marker **by path** and refuses a master or mirror Parquet left by another
+  generation. It reads no fence (R3-I1). The claim gate gives that stale-deliverables case its
+  own remedy (`--retry-failures` from the CLI until an image verifies, or `--overwrite`).
 - **`--accept-failures` maps only `3` to `0`** (D15). The exit-5 variant prints only when this
   generation published an aggregate proof, and names a store only through
   `excluded_store_names` (the per-image unprojectable predicate, shared with `_advisories`),
@@ -98,11 +99,12 @@ Inputs the spec implies but no spec test names. Each is pinned in the task named
 1. **A run whose every image failed** (verified = 0, no aggregate proof possible). It is
    `complete_with_failures` (D16): the verdict returns N, the waiter exits `3`, Recent Runs reads
    "complete · N failed", and the GUI can relaunch it. Any marker, an old master from before a
-   `--restart`, a non-finalizer fence or an unresolved image keeps it `failed`. Pinned in PA1 T1
+   `--restart` or an unresolved image keeps it `failed`; a fence does not. Pinned in PA1 T1
    (`test_an_all_failed_run_is_finished_with_failures`,
    `test_an_all_failed_run_beside_any_marker_returns_none`,
    `test_an_all_failed_restart_beside_an_old_master_returns_none`,
-   `test_an_all_failed_run_reads_its_fence`,
+   `test_an_all_failed_run_ignores_any_fence`,
+   `test_a_cancelled_slurm_generation_then_a_local_all_failed_run_is_confirmed`,
    `test_an_all_failed_run_with_an_unresolved_image_returns_none`), PA1 T2
    (`test_an_all_failed_run_exits_3`) and PA1 T3
    (`test_an_all_failed_cli_run_is_claimable_for_retry_failures`).
@@ -225,7 +227,6 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 | `_cli/_cli_wait.py` | PA1 T2 |
 | `sdk_/_state_types.py` | PA1 T1 |
 | `_cli/_cli_completion.py` | PA3 T1 (`required_paths`) |
-| `_cli/_cli_slurm_lifecycle.py` | PA1 T1 (`FENCE_CLOSED_BY_FINALIZER` re-export) |
 | `tests/unit/sdk_/test_run_state.py` | PA1 T1 (field set; moved `authorize_measurements`) |
 | `_gui/shell/_runs_registry.py` | PA1 T3, T4, PB3 T2 |
 | `_gui/run_console/_slurm.py` | PA1 T4 |
@@ -414,10 +415,23 @@ finding, and where it is fixed:
 | **R2-M1** Lane V helpers; the count | PA2: its helpers stay in its own test modules; README: four test files |
 | **R2-M2** Fixture names | PA1 T1: the inventory is `FIXTURE_STEMS` ∪ named stems in `FIXTURE_DATASET` (`"plate"`); tests use `a`/`b`/`c` and expect `plate/c` |
 | **R2-M3** The SLURM all-failed waiter case | PA1 T2 `test_an_all_failed_slurm_run_exits_3`, through the real finalizer path |
-| **R2-M4** One cancelled all-failed run, two answers | Spec PA4 step 4: the no-proof arm requires a finalizer-closed fence when one exists; `FENCE_CLOSED_BY_FINALIZER` moves to sdk_; `test_an_all_failed_run_reads_its_fence` |
+| **R2-M4** One cancelled all-failed run, two answers | *Superseded by R3-I1 (Revision 4):* the fence clause and the constant move are dropped; the disagreement is accepted and pinned |
 | **R2-M5** "under `commit_guard`" | Spec PA8: "when one is given" |
 | **R2-M6** PB3's helper move | PB3 T1: grep for monkeypatch targets on the rebased tree first; re-export only if one exists |
 | **I7 note** `inject_descriptor` hand-edits the proof | PA3 T1's test says so (no writer produces a pre-PA8 proof after T1); PA1 T1's `write_marker` invalid kinds carry the same note |
+
+## Revision 4 (re-review of revision 3)
+
+Revised 2026-11-25 against `plan-review.md`, "Re-review of revision 3" (`e8cfd9d28`):
+
+| Finding | Fix |
+|---|---|
+| **R3-I1** The fence clause read any fence, with no generation | Dropped from spec PA4 step 4 and PA1 T1, with the `FENCE_CLOSED_BY_FINALIZER` move (so R3-M2's shared-files gap is moot: PA1 T1 no longer edits `_io_constants.py` or `_cli_slurm_lifecycle.py`). Pinned: the cancelled-SLURM-then-local all-failed case is confirmed (T1), claimable (T3) and exits `3` (T2); `test_an_all_failed_run_ignores_any_fence`. R2-M4's observer/restart disagreement is accepted and pinned by T5's observer test and T3's rehydration twin |
+| **R3-I2** The stale-deliverables refusal sent the user round a no-op | The case keeps its refusal (team lead's call 1) and gets its own claim-gate message: `--retry-failures` from the CLI until an image verifies, or `--overwrite`. PA1 T3 `test_an_all_failed_restart_beside_an_old_master_names_the_real_remedy`; spec PA4, PA11 and PA7's tutorial line match |
+| **R3-M1** The remedy wording | The line says "Re-measure those stores with `--mode measure`; its finalize republishes the outputs". "Remove them from the input" is dropped (no cheap pin); PA1 T2 asserts both |
+| **R3-M2** The `_io_constants.py` shared-files row | Moot after R3-I1 (no edit there in PA1) |
+| **R3-M3** The moved helper's hand-edit | PA1 T1: `authorize_measurements` documented as the module's one sanctioned mutation, citing `test_finalize_run.py::_strip_measurement_descriptor` (`:1458`) |
+| **R3-M4** A test that cannot fail | PA1 T1: the killed-retry-verified-nothing test is marked documentation only and is not in the mutation table |
 
 ## Render
 
