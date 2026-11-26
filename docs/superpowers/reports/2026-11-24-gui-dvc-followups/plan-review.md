@@ -848,3 +848,104 @@ and match it in the tutorial line.
   appends "a retry attempt without result". No writer produces a verdict-relevant row for an
   attempt with no outcome, so the test is equal to the base case and cannot fail. Keep it as
   documentation, but don't count it toward the mutation table.
+
+---
+
+## Confirm of revision 4 (`eb552348b`, 2026-11-25)
+
+This is a narrow confirm of the three points the team lead asked about, not a full re-review.
+
+### Verdict
+
+**R3-I2 and R3-M1 are confirmed. R3-I1 is confirmed for the verdict and the GUI, but one of its
+three pins is wrong:** the waiter does not exit `3` in that case. Fix that one test and its
+spec sentence; nothing else blocks.
+
+### 1. R3-I1: the fence clause is gone; can any other path in the arm read a stale generation?
+
+**Confirmed for the verdict.** The no-proof arm no longer reads the fence. Its remaining inputs are:
+- `state.images` verdicts;
+- `state.completion`;
+- the marker path;
+- the two Parquet paths.
+
+Each of these can be stale only in the **refusing** direction:
+- **An earlier generation's marker or Parquet makes the arm return `None`, which is safe.** The
+  marker is cleared together with the journal by `--restart` (`phenotypicCLI.py:3493-3500`), so
+  "a marker beside zero verified images" arises only from a mixed `dvc checkout` or a copied
+  tree.
+- **Through step 1, an earlier generation's still-*active* fence makes the run `active`, so the
+  arm refuses.**
+  - `_live_authority` fences the lifecycle only by `restart_epoch`.
+  - A local run does not retire an active fence that has no ledger row (`phenotypicCLI.py:1176-1192`).
+  - This predates the change, applies to every verdict rather than this arm, and refuses rather
+    than confirms. I list it as a known residual, not a regression.
+- **Failure rows from an earlier generation still count.** They are keyed by content-derived
+  `work_id` (`_run_state.py:1042-1075`). That is by design and agrees with the CLI's
+  `_run_failure_count` (`:1493-1518`).
+
+The pins in T1 (`test_a_cancelled_slurm_generation_then_a_local_all_failed_run_is_confirmed`,
+`test_an_all_failed_run_ignores_any_fence`) and T3 (`…_is_claimable`) are right.
+
+**Not confirmed for the waiter.** `test_a_cancelled_slurm_then_local_all_failed_run_exits_3`
+(PA1 T2) and spec PA4 step 4's "the waiter exits `3` (`generation is None`, so `_published` is
+true)" are both wrong:
+- `wait_for_run` binds its generation by reading **whatever fence is on disk at the first poll**
+  (`_cli_wait.py:513`; the same code at `0993c8e06:_cli_wait.py:571`).
+- A local run writes no fence, so the waiter binds to the earlier, cancelled SLURM generation:
+  - `_published` returns `False`: the fence was not closed by its finalizer, and no marker or
+    proof carries that epoch;
+  - `_cancelled` returns `True`;
+  - so the waiter exits **`5`**, "this submission was cancelled before it published".
+- This predates PR A, which does not touch how the waiter binds.
+- The test passes only if `no_live_jobs_published` (undefined in the plan) stubs `_published`.
+  In that case the test is vacuous.
+
+**Fix:**
+- Pin the true outcome: exit `5` with the "cancelled" line. The CLI's own exit is `3`. The
+  verdict is confirmed, and the GUI is claimable.
+- Correct the spec sentence.
+- Make sure the waiter tests' helper never stubs `_published` for this case.
+
+Making the waiter ignore a fence that a later local run outlives would be a waiter change.
+That is outside both PRs unless the user asks for it.
+
+### 2. R3-I2: is the stale-master remedy true at both bases?
+
+**Confirmed: both named remedies work, and the excluded ones do not.**
+
+- **`--overwrite`** deletes every entry under the output (`phenotypicCLI.py:3317-3318` sets
+  `will_overwrite`; `:3520` deletes; the same at `0993c8e06:3325-3330`). That includes
+  `deliverables/`.
+  - One caveat: it refuses when a run input lives inside the output, for example a `--metadata`
+    that points at the run's own snapshot (`:644-731`, `:1009`). The message could add "copy
+    any input out of the output first", but that is optional.
+- **A CLI `--retry-failures` run that verifies at least one image** is a continuation with work
+  left to do (`:3794`), so it finalizes normally.
+  - `finalize_run` rewrites the master (`_cli_finalize_run.py:914`) and the mirror (`:952` →
+    `_seed_measurements`), then publishes a proof over the verified set (`:1013-1024`).
+  - The run therefore moves to the proof arm, with no stale Parquet left.
+- **The cases the plan says do nothing** are correct:
+  - a plain re-run is a no-op that exits `3` (`:3945-3964`);
+  - another `--restart` keeps `deliverables/`;
+  - a retry that verifies nothing finalizes nothing (`:883-885`).
+
+### 3. R3-M1: is the `--mode measure` remedy true for an unprojectable store?
+
+**Confirmed, with one caveat.**
+
+- `process_single_store_measure_core` re-measures the store and rewrites the pipeline's own run
+  folder with a full descriptor (`replace_image_store_measurements`,
+  `_cli_process_single.py:572-584`).
+- It then republishes the forward record with `measurements=` set to the **new** table
+  (`_republish_table_marker`, `:640-656`).
+- The projection reads the run that the record certifies (`_cli_parquet_agg.py:316-320`), so the
+  store becomes projectable.
+- The measure pass reaches the shared finalize, which republishes the master, the mirror and the
+  proof.
+
+**Caveat:** `--mode measure` refuses a pipeline whose measurers read reference metadata, and
+that refusal cannot be skipped (`_refuse_measuring_reference_pipeline`, `0993c8e06
+phenotypicCLI.py:761-773, 3148-3151`). For such a pipeline the line names a command that cannot
+run. Add the clause "(a pipeline that reads reference metadata cannot be re-measured; re-run it
+with `--restart`)", or pin the gap in a test.
