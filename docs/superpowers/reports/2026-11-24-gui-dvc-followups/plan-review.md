@@ -671,3 +671,180 @@ the same pass.
   helper mutants, as T1 Step 5 requires.
 - **The task count.** 28 tasks: 18 in PR A, 10 in PR B. PA1 6, PA2 1, PA3 3, PA4 2, PA5 1, PA6 3,
   PA7 2; PB0 1, PB1 2, PB2 1, PB3 3, PB4 3.
+
+---
+
+## Re-review of revision 3 (`88a86b669`, 2026-11-25)
+
+**Scope:**
+- the plan README's "Revision 3" table;
+- the diff `9a31a5361..88a86b669` across the spec, PA1, PA2, PA3, PA5 and PB3.
+
+Checked against the code at `36b9e840e` (worktree `src/`) and `0993c8e06`.
+
+### Verdict
+
+**Ready to execute once one finding is fixed (R3-I1). Nothing is critical.** Every R2 finding is
+resolved, and the two calls the team lead asked about hold up, subject to R3-I2 and R3-M1.
+
+The fix for R2-M4 (the finalizer-closed-fence clause) introduces a regression. That clause
+should be dropped. If it stays, it must be bound to the fence's generation.
+
+Counts:
+- **0 critical.**
+- **2 important:** R3-I1 and R3-I2.
+- **4 minor:** R3-M1 to R3-M4.
+
+### The R2 findings
+
+| Finding | Status | Evidence |
+|---|---|---|
+| R2-C1 `excluded_work_ids` | **Resolved** | No marker field remains. `excluded_store_names(images)` is the `_advisories` predicate (`_run_state.py:1680-1695`) unchanged in wording. `late_stems` must name no store, and `unprojectable_stems` drives the store through the real "no column list" shape. Both pinned advisory tests (`:1272`, `:1351`) stay green unedited, because a pure factoring of a predicate cannot change either answer |
+| R2-I1 Pinned `RunState` field set | **Resolved** | `test_run_state.py:56-75` and `tracked_state.md:43-53` are listed and edited deliberately |
+| R2-I2 No-proof arm | **Resolved**, apart from the fence clause (R3-I1) | The marker is tested by path, with `[wrong_version]` and `[empty_outputs]` killing the `_valid_aggregate_proof` mutant. The other-generation deliverable check holds on every path (below). The killed-retry case is pinned both ways, and N7 is corrected |
+| R2-I3 PA5 flip test | **Resolved** | Three stems; completion is asserted to stay `failed`; the N-mismatch test is added with a message |
+| R2-I4 `RunSnapshot` | **Resolved** | `excluded_stores` is computed in the same pass, and `_report_outcome` passes it on |
+| R2-M1 to R2-M3, R2-M5, R2-M6 | **Resolved** | PA2's helpers stay local. The fixtures are `plate/<stem>`. The SLURM all-failed test exists, and the ordinary finalizer does close the fence with `closed_by=FENCE_CLOSED_BY_FINALIZER` and no `terminal_status` (`_cli_checkpoint_handler.py:491-499`), so `_published` holds and exit `3` is right. The spec says "when one is given". PB3 greps before the move |
+| R2-M4 Cancelled all-failed run | **Fixed, but the fix regresses:** R3-I1 | |
+
+### Verified: the deliverables-existence refusal (the team lead's question)
+
+**Claim: an all-failed finalize writes no `master_measurements.parquet` and no
+`measurements.parquet`.** This is true on every path, at both bases.
+
+- **The mirror has one writer, and it runs after a non-`None` master.** The only writer of
+  `measurements.parquet` is `_seed_measurements` (`_cli_output_manager.py:1002`). Its only
+  caller is `finalize_post_master_outputs` (`:1215`), whose only caller is `finalize_run:952`.
+  That is after `if master_df is None: return None` (`_cli_finalize_run.py:883-885`). The same
+  holds at `0993c8e06`: `git grep` finds the same two call sites.
+- **`master_measurements.parquet`** is written by:
+  - `finalize_run:914`, which is past the same early return;
+  - the chunk writer (`_cli_chunk_writer.py:229-236`), and only on the legacy
+    non-`embedded_authority` arm, from chunk rows of successful images. An all-failed run has
+    none.
+- **Local, SLURM finalizer, measure, recompile and migrate** all reach the master through
+  `finalize_run` / `aggregate_measurements`:
+  - a SLURM all-failed finalizer gets `aggregate_path is None`, logs, and closes the fence
+    (`_cli_checkpoint_handler.py:317-331, 491-499`);
+  - migrate's `republish_aggregate` refuses zero successes (`_hdf_to_zarr.py:773-800`).
+
+**Can a legitimate all-failed run have one of these files?** Only as leftovers from another
+generation:
+- a `--restart` keeps `deliverables/` and clears `.phenotypic/` (`phenotypicCLI.py:3493-3500`);
+- a `dvc checkout` mixing commits;
+- a hand-copied tree.
+
+Images that once verified cannot later become `failed` without a restart: a success outranks a
+failure row (`_run_state.py:986-996`). A deleted record or store makes an image *unresolved*,
+which step 2 already refuses. GUI curation cannot write either file into such a run, because
+the viewer cannot open a tree with no aggregate proof. **Call 1 is sound as a rule**, but see
+R3-I2 for the remedy it tells the user.
+
+### Verified: the `FENCE_CLOSED_BY_FINALIZER` move and its import direction
+
+**Sound.**
+- `_cli/_cli_slurm_lifecycle.py` already imports `slurm_lifecycle_path` from sdk_'s
+  `_io_constants` (`:26`), so taking the constant from there adds no new direction.
+- sdk_ already has `slurm_lifecycle_path` (`sdk_/_io_constants.py:2738`), so the verdict needs
+  no `_cli` import.
+- The re-export keeps every current importer working: `_cli_wait.py:212, 256`,
+  `_cli_staged_orchestration.py:32`, `_cli_checkpoint_handler.py:406, 420`, and
+  `_cli_slurm_lifecycle.__all__` (`:1072`).
+
+**Moot if R3-I1 drops the fence clause.** Then the move is not needed at all.
+
+### Verified: moving `authorize_measurements` into `tests/_output_layout.py`
+
+**Safe for the 62 importers.**
+- The change is additive. No importer does `from tests._output_layout import *`, and no test
+  module defines a colliding `authorize_measurements`, `build_run_with_failures` or
+  `excluded_store_names` (I grepped `tests/` and `src/`).
+- The helper's imports are function-local, as `_authorize_measurements`' are today
+  (`test_run_state.py:531-590`).
+- The 5 call sites in `test_run_state.py` (`:669, 670, 685, 686, 1339`) switch to the import.
+
+One caveat, R3-M3: it brings a hand-edit of a store's root `zarr.json` into the module whose
+rule is "real publishers only".
+
+### Important
+
+#### R3-I1. The finalizer-closed-fence clause is not tied to a generation, so an earlier fence vetoes a later local run
+
+**Where:** spec PA4 step 4's last bullet; PA1 T1 `test_an_all_failed_run_reads_its_fence`.
+
+**Evidence:**
+- The clause reads whatever `slurm_lifecycle_path(output_dir)` holds. A local run never writes or
+  closes a fence: "A local run is not refused: it never publishes a fence"
+  (`phenotypicCLI.py:1152-1168`). `_retire_dead_fence` closes only an *active* fence (`:1176+`).
+- So take an SLURM generation that the user cancelled (fence `active: false`, `closed_by` unset),
+  then a local continuation of the same output whose images all fail.
+  - The CLI exits `3` (`:3955-3964`).
+  - The verdict returns `None` because of the stale cancelled fence.
+  - The GUI then reads `failed` and refuses `--retry-failures`, against D10 and D16.
+  - The local waiter (`generation is None`, so `_published` is `True`) exits `5`, where D16
+    says `3`.
+- The same veto comes from a later `--mode measure` SLURM pass that closes its fence with
+  `terminal_status: "failed"` (`0993c8e06 _cli_checkpoint_handler.py:414-430`, U16). That
+  becomes reachable in PR B.
+- The disagreement R2-M4 named (observer `failed` against rehydration `complete_with_failures`
+  for a cancelled all-failed SLURM run) is the milder problem. Even there,
+  `complete_with_failures` is arguably the true state, because every accepted image did fail.
+
+**Fix (pick one):**
+- **(a)** Drop the clause, and pin R2-M4's disagreement with a test and a sentence in spec PA4.
+  This is my recommendation: it also makes the constant move unnecessary.
+- **(b)** Bind the clause to the generation that produced the failures. It applies only when
+  some current failure row's `lifecycle_epoch` equals the fence's `generation`. SLURM workers
+  write that field (`_cli_wait.py:269-285` docstring); local rows say `"local"`.
+  - This needs the epoch in the verdict's inputs: carry it on `ImageState`, or read the journal
+    in the no-proof arm only.
+  - Add a "cancelled SLURM generation, then a local all-failed continuation" test expecting `2`.
+
+#### R3-I2. In the stale-deliverables case, the refusal tells the user to do something that does not help
+
+**Where:** spec PA4 step 4 ("re-run from the CLI or with `--overwrite`"); PA1 T3's PA11 message
+("re-run it from the CLI or wait for it to finish").
+
+**Evidence:**
+- After an all-failed `--restart` beside an old master, these do **not** clear the state:
+  - a plain re-run is a no-op: no image verified, so no refresh, and the CLI exits `3`;
+  - another `--restart` keeps `deliverables/` again;
+  - a `--retry-failures` that verifies nothing.
+- Only these do:
+  - `--overwrite`;
+  - deleting the two Parquet files;
+  - a retry that verifies at least one image, which then publishes a proof and switches to the
+    proof arm.
+- The current claim-gate text sends the user round the no-op loop.
+- **Call 1 itself is acceptable.** The trade is that the GUI cannot retry this tree, while the
+  CLI's `--retry-failures` or `--overwrite` can.
+
+**Fix:** give this case its own refusal text, decided inside `_foreign_run_conflict` from the
+same existence check. For example: "output has N failed images and a master from an earlier run;
+re-run with `--retry-failures` from the CLI, or start over with `--overwrite`". Pin it in PA1 T3,
+and match it in the tutorial line.
+
+### Minor
+
+- **R3-M1 (call 2's remedy wording).** "Fix those stores by re-measuring them, or remove them from
+  the input". Both halves are plausible:
+  - `--mode measure` rewrites the table run with a descriptor;
+  - a continuation rebuilds `work_ids` from the current input scan (`phenotypicCLI.py:4072-4080`),
+    so a removed input leaves the inventory.
+
+  But neither is pinned by a test, and the existing advisory says only "the store has to be
+  re-measured" (`_run_state.py:1689-1695`). Name the command (`--mode measure`). Say whether
+  the measure pass re-finalizes on its own: it reaches the shared finalize, so "then re-run" may
+  be unnecessary. Add one integration assertion, or drop "remove them from the input".
+- **R3-M2 (shared-files table).** PA1 T1 now edits `sdk_/_io_constants.py` (the constant), but the
+  README shared-files row for `_io_constants.py` (`:238`) lists only PA3 T1, T2 and PA4 T1.
+  The main line is sequential, so this is a bookkeeping gap only.
+- **R3-M3 (the moved helper's hand-edit).** `authorize_measurements(projectable=False)` pops a
+  table descriptor from the store's root `zarr.json` by hand (`test_run_state.py:575-581`).
+  `tests/_output_layout.py`'s rule is real publishers, never hand-written JSON (`:448-470`).
+  Note the helper there as the one sanctioned mutation, citing
+  `test_finalize_run.py::_strip_measurement_descriptor`, the shape it reproduces.
+- **R3-M4 (a test that cannot fail).** `test_a_killed_retry_that_verified_nothing_stays_confirmed`
+  appends "a retry attempt without result". No writer produces a verdict-relevant row for an
+  attempt with no outcome, so the test is equal to the base case and cannot fail. Keep it as
+  documentation, but don't count it toward the mutation table.
