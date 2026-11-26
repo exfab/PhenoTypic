@@ -16,7 +16,9 @@ regenerated; one simplify pass.
 - `src/phenotypic/_cli/CLAUDE.md:663, 697-745, 777, 1549, 1659` and its output inventory
   (`:1659`'s "Two generated CSVs and one input snapshot stay CSV" becomes "one generated CSV,
   `error_analysis.csv` (D18), and one input snapshot stay CSV"); the `phenotypic-wait` bullets
-  say `--accept-failures` maps only `3` (D15);
+  say `--accept-failures` maps only `3` (D15), and that after cancelling a SLURM run and
+  continuing it locally, the CLI's own exit code is the one to use, not `phenotypic-wait`'s
+  (spec R15; the same line goes in `dvc.md`);
 - `src/phenotypic/_gui/CLAUDE.md:257, 324, 427`, and the readers rule gains
   `run_finished_with_failures`;
 - `docs/source/contrib_guide/tracked_state.md` (check every row PA1/PA5 added is present);

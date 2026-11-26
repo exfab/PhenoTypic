@@ -432,6 +432,8 @@ Revised 2026-11-25 against `plan-review.md`, "Re-review of revision 3" (`e8cfd9d
 | **R3-M2** The `_io_constants.py` shared-files row | Moot after R3-I1 (no edit there in PA1) |
 | **R3-M3** The moved helper's hand-edit | PA1 T1: `authorize_measurements` documented as the module's one sanctioned mutation, citing `test_finalize_run.py::_strip_measurement_descriptor` (`:1458`) |
 | **R3-M4** A test that cannot fail | PA1 T1: the killed-retry-verified-nothing test is marked documentation only and is not in the mutation table |
+| **Confirm item 1** The waiter binds the stale cancelled fence (exit `5`, not `3`) | Accepted (team lead): PA1 T2's test renamed `test_a_cancelled_slurm_then_local_all_failed_run_waiter_binds_the_stale_fence` and flipped to exit `5`, through the real `_published` (the fixtures stub neither `_published` nor `_cancelled`); spec PA4 step 4 corrected; spec R15; PA6 T1 carries the docs line (spec PA8). T1 (confirmed) and T3 (claimable) unchanged |
+| **Confirm item 3** `--mode measure` refuses reference-metadata pipelines | PA1 T2: `_measure_refused(output_dir)` over the run's pipeline; the line names `--restart` instead; `test_a_reference_metadata_pipeline_gets_the_restart_remedy` |
 
 ## Render
 

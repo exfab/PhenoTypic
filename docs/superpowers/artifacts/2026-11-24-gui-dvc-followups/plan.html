@@ -947,6 +947,14 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 <td><strong>R3-M4</strong> A test that cannot fail</td>
 <td>PA1 T1: the killed-retry-verified-nothing test is marked documentation only and is not in the mutation table</td>
 </tr>
+<tr class="odd">
+<td><strong>Confirm item 1</strong> The waiter binds the stale cancelled fence (exit <code>5</code>, not <code>3</code>)</td>
+<td>Accepted (team lead): PA1 T2's test renamed <code>test_a_cancelled_slurm_then_local_all_failed_run_waiter_binds_the_stale_fence</code> and flipped to exit <code>5</code>, through the real <code>_published</code> (the fixtures stub neither <code>_published</code> nor <code>_cancelled</code>); spec PA4 step 4 corrected; spec R15; PA6 T1 carries the docs line (spec PA8). T1 (confirmed) and T3 (claimable) unchanged</td>
+</tr>
+<tr class="even">
+<td><strong>Confirm item 3</strong> <code>--mode measure</code> refuses reference-metadata pipelines</td>
+<td>PA1 T2: <code>_measure_refused(output_dir)</code> over the run's pipeline; the line names <code>--restart</code> instead; <code>test_a_reference_metadata_pipeline_gets_the_restart_remedy</code></td>
+</tr>
 </tbody>
 </table></div>
 <h2 id="d0-render">Render</h2>
@@ -1203,7 +1211,8 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 <li><code>decide_wait_outcome(..., finished_with_failures: int | None = None) -&gt; RunExitCode | None</code>: still pure. Rule 3 requires <code>published and finished_with_failures is not None</code>; rule 4 (process) unchanged.</li>
 <li><code>finished_run_outcome(output_dir: Path, generation: str | None) -&gt; RunExitCode | None</code>: <code>decide_wait_outcome</code> over one <code>_run_snapshot</code> and the other seams, with <code>live</code> empty. Only the SLURM observer calls it (Task 5).</li>
 <li><code>_proof_published_by(output_dir: Path, generation: str | None) -&gt; Mapping[str, object] | None</code>: the aggregate marker when its <code>execution_epoch</code> is <code>generation</code> (with <code>None</code>, any marker), else <code>None</code>.</li>
-<li><code>_unpublished_line(output_dir, *, cancelled: bool, published_proof: Mapping[str, object] | None, excluded_stores: tuple[str, ...]) -&gt; str</code>: with no <code>published_proof</code>, today's line. With one: when <code>excluded_stores</code> is non-empty, spec PA4's D15 line naming them; otherwise the gap line, which names no store. <code>&lt;logs&gt;</code> is <code>slurm_logs_dir(output_dir)</code>. <code>_report_outcome</code> (<code>:427+</code>) passes the snapshot's <code>excluded_stores</code>, never a fresh resolve.</li>
+<li><code>_unpublished_line(output_dir, *, cancelled: bool, published_proof: Mapping[str, object] | None, excluded_stores: tuple[str, ...], measure_refused: bool) -&gt; str</code>: with no <code>published_proof</code>, today's line. With one: when <code>excluded_stores</code> is non-empty, spec PA4's D15 line naming them, with the <code>--restart</code> remedy when <code>measure_refused</code>; otherwise the gap line, which names no store.</li>
+<li><code>_measure_refused(output_dir: Path) -&gt; bool</code>: <code>bool(reference_operation_paths(pipeline, "measure"))</code> (<code>_cli/_cli_reference.py:269</code>) over the pipeline at <code>resolve_pipeline_config_path(output_dir)</code>; <code>False</code> when it cannot be loaded. Called once, by <code>_report_outcome</code>, only when <code>excluded_stores</code> is non-empty. <code>&lt;logs&gt;</code> is <code>slurm_logs_dir(output_dir)</code>. <code>_report_outcome</code> (<code>:427+</code>) passes the snapshot's <code>excluded_stores</code>, never a fresh resolve.</li>
 </ul></li>
 </ul>
 <ul class="task-list">
@@ -1268,14 +1277,25 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 <span id="d1-cb2-56"><a href="#d1-cb2-56" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> _published(out, gen) <span class="kw">is</span> <span class="va">True</span></span>
 <span id="d1-cb2-57"><a href="#d1-cb2-57" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> finished_run_outcome(out, gen) <span class="kw">is</span> RunExitCode.COMPLETE_WITH_FAILURES</span>
 <span id="d1-cb2-58"><a href="#d1-cb2-58" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb2-59"><a href="#d1-cb2-59" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_cancelled_slurm_then_local_all_failed_run_exits_3(monkeypatch, tmp_path):   <span class="co"># R3-I1</span></span>
+<span id="d1-cb2-59"><a href="#d1-cb2-59" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_cancelled_slurm_then_local_all_failed_run_waiter_binds_the_stale_fence(monkeypatch, tmp_path, capsys):   <span class="co"># R15</span></span>
 <span id="d1-cb2-60"><a href="#d1-cb2-60" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, failed_stems<span class="op">=</span>(<span class="st">&quot;a&quot;</span>, <span class="st">&quot;b&quot;</span>))</span>
 <span id="d1-cb2-61"><a href="#d1-cb2-61" aria-hidden="true" tabindex="-1"></a>    close_fence(out, how<span class="op">=</span><span class="st">&quot;cancelled&quot;</span>)<span class="op">;</span> continue_locally_all_failed(out)</span>
-<span id="d1-cb2-62"><a href="#d1-cb2-62" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> wait_for_run(out, <span class="op">**</span>no_live_jobs_published(monkeypatch, out)) <span class="kw">is</span> RunExitCode.COMPLETE_WITH_FAILURES</span>
-<span id="d1-cb2-63"><a href="#d1-cb2-63" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d1-cb2-64"><a href="#d1-cb2-64" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_accept_failures_stays_strict(monkeypatch, tmp_path):                  <span class="co"># D15</span></span>
-<span id="d1-cb2-65"><a href="#d1-cb2-65" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, unprojectable_stems<span class="op">=</span>(<span class="st">&quot;c&quot;</span>,))</span>
-<span id="d1-cb2-66"><a href="#d1-cb2-66" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> wait_for_run(out, accept_failures<span class="op">=</span><span class="va">True</span>, <span class="op">**</span>no_live_jobs_published(monkeypatch, out)) <span class="kw">is</span> RunExitCode.ENDED_UNPUBLISHED</span></code></pre></div>
+<span id="d1-cb2-62"><a href="#d1-cb2-62" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> wait_for_run(out, <span class="op">**</span>no_live_jobs(monkeypatch)) <span class="kw">is</span> RunExitCode.ENDED_UNPUBLISHED     <span class="co"># the real _published</span></span>
+<span id="d1-cb2-63"><a href="#d1-cb2-63" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;cancelled before it published&quot;</span> <span class="kw">in</span> capsys.readouterr().out</span>
+<span id="d1-cb2-64"><a href="#d1-cb2-64" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_finished_with_failures(resolve_run_state(out, depth<span class="op">=</span><span class="st">&quot;shallow&quot;</span>), out) <span class="op">==</span> <span class="dv">2</span>   <span class="co"># the verdict still confirms</span></span>
+<span id="d1-cb2-65"><a href="#d1-cb2-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb2-66"><a href="#d1-cb2-66" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_reference_metadata_pipeline_gets_the_restart_remedy(monkeypatch, tmp_path, capsys):   <span class="co"># rev-4 confirm item 3</span></span>
+<span id="d1-cb2-67"><a href="#d1-cb2-67" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, unprojectable_stems<span class="op">=</span>(<span class="st">&quot;c&quot;</span>,))</span>
+<span id="d1-cb2-68"><a href="#d1-cb2-68" aria-hidden="true" tabindex="-1"></a>    write_run_pipeline(out, with_reference_measurer<span class="op">=</span><span class="va">True</span>)     <span class="co"># e.g. a SubtractBlank-reading measurer</span></span>
+<span id="d1-cb2-69"><a href="#d1-cb2-69" aria-hidden="true" tabindex="-1"></a>    wait_for_run(out, <span class="op">**</span>no_live_jobs_published(monkeypatch, out))</span>
+<span id="d1-cb2-70"><a href="#d1-cb2-70" aria-hidden="true" tabindex="-1"></a>    text <span class="op">=</span> capsys.readouterr().out</span>
+<span id="d1-cb2-71"><a href="#d1-cb2-71" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;with `--restart`&quot;</span> <span class="kw">in</span> text <span class="kw">and</span> <span class="st">&quot;cannot be re-measured&quot;</span> <span class="kw">in</span> text</span>
+<span id="d1-cb2-72"><a href="#d1-cb2-72" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;Re-measure those stores with `--mode measure`&quot;</span> <span class="kw">not</span> <span class="kw">in</span> text</span>
+<span id="d1-cb2-73"><a href="#d1-cb2-73" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d1-cb2-74"><a href="#d1-cb2-74" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_accept_failures_stays_strict(monkeypatch, tmp_path):                  <span class="co"># D15</span></span>
+<span id="d1-cb2-75"><a href="#d1-cb2-75" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> build_run_with_failures(tmp_path, unprojectable_stems<span class="op">=</span>(<span class="st">&quot;c&quot;</span>,))</span>
+<span id="d1-cb2-76"><a href="#d1-cb2-76" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> wait_for_run(out, accept_failures<span class="op">=</span><span class="va">True</span>, <span class="op">**</span>no_live_jobs_published(monkeypatch, out)) <span class="kw">is</span> RunExitCode.ENDED_UNPUBLISHED</span></code></pre></div>
+<p><strong>The two test fixtures.</strong> <code>no_live_jobs(monkeypatch)</code> stubs only <code>_live_jobs</code> (no scheduler). <code>no_live_jobs_published(monkeypatch, out)</code> is the same stub plus an assertion that no fence is on disk, so the waiter binds <code>generation is None</code> and the real <code>_published</code> returns <code>True</code>. <strong>Neither stubs <code>_published</code> or <code>_cancelled</code></strong>, so every waiter test reads the real publication rules (rev-4 confirm, item 1).</p>
 <p>Every existing <code>decide_wait_outcome</code> test keeps its assertions; those that reach rule 3 gain <code>finished_with_failures=&lt;N&gt;</code>.</p>
 <ul class="task-list">
 <li><input type="checkbox" disabled="" />
@@ -2023,7 +2043,7 @@ PB0.T1 ─► PB1.T1 ─► PB1.T2 ─► PB2.T1 ─► PB3.T1 ─► PB3.T2 ─
 <p><strong>Files:</strong> exactly spec PA8's list, plus N3's:</p>
 <ul>
 <li><code>CLAUDE.md</code> ("Output layout": <code>measurements.{tsv,parquet}</code>);</li>
-<li><code>src/phenotypic/_cli/CLAUDE.md:663, 697-745, 777, 1549, 1659</code> and its output inventory (<code>:1659</code>'s "Two generated CSVs and one input snapshot stay CSV" becomes "one generated CSV, <code>error_analysis.csv</code> (D18), and one input snapshot stay CSV"); the <code>phenotypic-wait</code> bullets say <code>--accept-failures</code> maps only <code>3</code> (D15);</li>
+<li><code>src/phenotypic/_cli/CLAUDE.md:663, 697-745, 777, 1549, 1659</code> and its output inventory (<code>:1659</code>'s "Two generated CSVs and one input snapshot stay CSV" becomes "one generated CSV, <code>error_analysis.csv</code> (D18), and one input snapshot stay CSV"); the <code>phenotypic-wait</code> bullets say <code>--accept-failures</code> maps only <code>3</code> (D15), and that after cancelling a SLURM run and continuing it locally, the CLI's own exit code is the one to use, not <code>phenotypic-wait</code>'s (spec R15; the same line goes in <code>dvc.md</code>);</li>
 <li><code>src/phenotypic/_gui/CLAUDE.md:257, 324, 427</code>, and the readers rule gains <code>run_finished_with_failures</code>;</li>
 <li><code>docs/source/contrib_guide/tracked_state.md</code> (check every row PA1/PA5 added is present);</li>
 <li><code>docs/source/how_to/pages/dvc.md:76-94, 363-392</code> (the "until #283" caveat removed; "curate after the last <code>dvc repro</code>", D11; the exit-code table's <code>5</code> row and the text about <code>3</code>, N3);</li>

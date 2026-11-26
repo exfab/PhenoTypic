@@ -262,9 +262,14 @@ green unedited: they pin `excluded_store_names`' two answers through `_advisorie
   - `_proof_published_by(output_dir: Path, generation: str | None) -> Mapping[str, object] | None`:
     the aggregate marker when its `execution_epoch` is `generation` (with `None`, any marker),
     else `None`.
-  - `_unpublished_line(output_dir, *, cancelled: bool, published_proof: Mapping[str, object] | None, excluded_stores: tuple[str, ...]) -> str`:
+  - `_unpublished_line(output_dir, *, cancelled: bool, published_proof: Mapping[str, object] | None, excluded_stores: tuple[str, ...], measure_refused: bool) -> str`:
     with no `published_proof`, today's line. With one: when `excluded_stores` is non-empty,
-    spec PA4's D15 line naming them; otherwise the gap line, which names no store.
+    spec PA4's D15 line naming them, with the `--restart` remedy when `measure_refused`;
+    otherwise the gap line, which names no store.
+  - `_measure_refused(output_dir: Path) -> bool`: `bool(reference_operation_paths(pipeline, "measure"))`
+    (`_cli/_cli_reference.py:269`) over the pipeline at `resolve_pipeline_config_path(output_dir)`;
+    `False` when it cannot be loaded. Called once, by `_report_outcome`, only when
+    `excluded_stores` is non-empty.
     `<logs>` is `slurm_logs_dir(output_dir)`. `_report_outcome` (`:427+`) passes the snapshot's
     `excluded_stores`, never a fresh resolve.
 
@@ -329,15 +334,31 @@ def test_an_all_failed_slurm_run_exits_3(tmp_path):                           # 
     assert _published(out, gen) is True
     assert finished_run_outcome(out, gen) is RunExitCode.COMPLETE_WITH_FAILURES
 
-def test_a_cancelled_slurm_then_local_all_failed_run_exits_3(monkeypatch, tmp_path):   # R3-I1
+def test_a_cancelled_slurm_then_local_all_failed_run_waiter_binds_the_stale_fence(monkeypatch, tmp_path, capsys):   # R15
     out = build_run_with_failures(tmp_path, failed_stems=("a", "b"))
     close_fence(out, how="cancelled"); continue_locally_all_failed(out)
-    assert wait_for_run(out, **no_live_jobs_published(monkeypatch, out)) is RunExitCode.COMPLETE_WITH_FAILURES
+    assert wait_for_run(out, **no_live_jobs(monkeypatch)) is RunExitCode.ENDED_UNPUBLISHED     # the real _published
+    assert "cancelled before it published" in capsys.readouterr().out
+    assert run_finished_with_failures(resolve_run_state(out, depth="shallow"), out) == 2   # the verdict still confirms
+
+def test_a_reference_metadata_pipeline_gets_the_restart_remedy(monkeypatch, tmp_path, capsys):   # rev-4 confirm item 3
+    out = build_run_with_failures(tmp_path, unprojectable_stems=("c",))
+    write_run_pipeline(out, with_reference_measurer=True)     # e.g. a SubtractBlank-reading measurer
+    wait_for_run(out, **no_live_jobs_published(monkeypatch, out))
+    text = capsys.readouterr().out
+    assert "with `--restart`" in text and "cannot be re-measured" in text
+    assert "Re-measure those stores with `--mode measure`" not in text
 
 def test_accept_failures_stays_strict(monkeypatch, tmp_path):                  # D15
     out = build_run_with_failures(tmp_path, unprojectable_stems=("c",))
     assert wait_for_run(out, accept_failures=True, **no_live_jobs_published(monkeypatch, out)) is RunExitCode.ENDED_UNPUBLISHED
 ```
+
+**The two test fixtures.** `no_live_jobs(monkeypatch)` stubs only `_live_jobs` (no scheduler).
+`no_live_jobs_published(monkeypatch, out)` is the same stub plus an assertion that no fence is
+on disk, so the waiter binds `generation is None` and the real `_published` returns `True`.
+**Neither stubs `_published` or `_cancelled`**, so every waiter test reads the real publication
+rules (rev-4 confirm, item 1).
 
 Every existing `decide_wait_outcome` test keeps its assertions; those that reach rule 3 gain
 `finished_with_failures=<N>`.

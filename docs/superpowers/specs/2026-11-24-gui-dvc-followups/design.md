@@ -638,8 +638,12 @@ judges the state it already resolved, at its own depth:
    cancelled SLURM generation's fence outlives a later local continuation. A fence check would
    veto that continuation (and a later `--mode measure` pass's failed fence, #282 U16). So:
    - **a SLURM generation cancelled, then a local continuation in which every image fails,** is
-     confirmed: N is returned, the GUI can claim it for `--retry-failures`, and the waiter exits
-     `3` (`generation is None`, so `_published` is true);
+     confirmed: N is returned, and the GUI can claim it for `--retry-failures`. The CLI's own
+     exit for that local run is `3`. `phenotypic-wait` over the same output exits `5` ("this
+     submission was cancelled before it published"): it binds whatever fence is on disk at its
+     first poll (`_cli_wait.py:513`; `0993c8e06 _cli_wait.py:571`), which is the cancelled SLURM
+     generation's, because a local run writes no fence. This predates PR A, which does not
+     change how the waiter binds, and is accepted as a limitation (R15);
    - **a cancelled all-failed SLURM run** reads `failed` in the observer, through
      `finished_run_outcome`, and `complete_with_failures` after a GUI restart, through the bare
      verdict. This disagreement is **accepted and pinned** (plan re-review R2-M4): every
@@ -723,7 +727,14 @@ arms call both, so they cannot drift. **[call]**
       pass and carries it on `RunSnapshot` (plan re-review R2-I4). The line: "phenotypic-wait:
       the published outputs leave out <list>, because their stores declare no table the
       finalizer can project (its log under <logs> says why). Re-measure those stores with
-      `--mode measure`; its finalize republishes the outputs." **[call]** The remedy is the
+      `--mode measure`; its finalize republishes the outputs." When the run's pipeline has
+      measurers that read reference metadata, `--mode measure` refuses it, un-skippably
+      (`_refuse_measuring_reference_pipeline`, `0993c8e06 phenotypicCLI.py:761-773,
+      3148-3151`), so the line says instead: "Re-run those stores' images with `--restart`; a
+      pipeline that reads reference metadata cannot be re-measured with `--mode measure`." The
+      waiter decides which with `reference_operation_paths(pipeline, "measure")`
+      (`_cli/_cli_reference.py:269`) over the run's own pipeline config, read once, only when
+      the line names stores (rev-4 confirm, item 3). **[call]** The remedy is the
       existing advisory's ("the store has to be re-measured", `_run_state.py:1689-1695`) named as
       a command. "Remove them from the input" is dropped: it is plausible (a continuation
       rebuilds `work_ids` from the input scan, `phenotypicCLI.py:4072-4080`) but no cheap test
@@ -1064,7 +1075,10 @@ from both runs.
   - `RunExitCode.ENDED_UNPUBLISHED`'s docstring, "published nothing" (`sdk_/_exit_codes.py:29-30`);
   - `_cli/CLAUDE.md`'s exit-code table (`:663`) and its `phenotypic-wait` bullets (`:697-745`,
     `:1549`);
-  - the DVC how-to's exit-code table and its text about `3` (`docs/source/how_to/pages/dvc.md:370-392`).
+  - the DVC how-to's exit-code table and its text about `3` (`docs/source/how_to/pages/dvc.md:370-392`);
+  - **one line in the DVC how-to and in `_cli/CLAUDE.md`'s `phenotypic-wait` bullets (R15):**
+    after cancelling a SLURM run and continuing it locally, use the CLI's own exit code, not
+    `phenotypic-wait`, which still binds the cancelled generation's fence.
 - **The other pages that name it:** `docs/source/api_reference/cli_reference.rst`,
   `how_to/pages/{reference_metadata,migrate_ome_zarr,rembi_metadata,generate_reports}.md`,
   `tutorials/gui/01_setup.md`, `tutorials/notebooks/07_measuring_and_exporting.ipynb`.
@@ -1804,6 +1818,12 @@ FEATURES row:
   D10 the gate refused every `failed` output; the same window already existed for `complete`
   outputs, whose re-run is a no-op. A SLURM CLI run is still fenced. Accepted and documented
   (D17); a CLI liveness record would be a CLI change outside both PRs.
+- **R15. `phenotypic-wait` binds a stale cancelled fence after a local continuation.** It reads
+  the fence on disk at its first poll (`_cli_wait.py:513`), and a local run writes none, so after
+  a SLURM generation is cancelled and the run is continued locally, the waiter follows the
+  cancelled generation and exits `5`, even when the local run exits `3` and the verdict confirms
+  it (PA4 step 4). The waiter exists to follow SLURM submissions; accepted and documented (PA8),
+  with no waiter change.
 
 ---
 
@@ -2050,3 +2070,10 @@ that changed the spec:
 | **R3-I1** The fence clause had no generation | Dropped, with the constant move. PA4 step 4 pins the cancelled-SLURM-then-local all-failed case (confirmed, claimable, exit `3`) and accepts R2-M4's observer/restart disagreement |
 | **R3-I2** The stale-deliverables remedy | PA4 step 4 states what clears the state; PA11 gives the case its own message; PA7's tutorial line matches |
 | **R3-M1** The remedy wording | PA4: `--mode measure` only; "remove them from the input" dropped. D15's note records it |
+
+**Confirm of revision 4** (`plan-review.md`, "Confirm of revision 4"):
+
+| Finding | Fix |
+|---|---|
+| **Item 1** The waiter exits `5`, not `3`, for a cancelled-SLURM-then-local all-failed run | PA4 step 4 corrected; new risk R15; PA8 adds the docs line. The verdict (confirmed) and the claim gate (claimable) are unchanged |
+| **Item 3** `--mode measure` refuses reference-metadata pipelines | PA4: the line names `--restart` for such a pipeline, decided by `reference_operation_paths` over the run's pipeline |
